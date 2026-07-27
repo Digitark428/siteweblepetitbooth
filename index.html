@@ -102,7 +102,7 @@
   --grad-lux:linear-gradient(100deg,#E7C9FF 0%,var(--gold) 100%);
 
   --shell:min(1240px,92vw);
-  --pad-y:clamp(88px,11vw,168px);
+  --pad-y:clamp(74px,8.5vw,132px);
   --r:20px;
   --ease:cubic-bezier(.22,1,.36,1);
 }
@@ -134,7 +134,8 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;font-weight:800;line-height:1.02;margi
 /* ---------- Structure ---------- */
 .shell{width:var(--shell);margin-inline:auto}
 .band{position:relative;padding-block:var(--pad-y);z-index:2}
-.band--tight{padding-block:clamp(60px,7vw,100px)}
+.band--tight{padding-block:clamp(52px,6vw,88px)}
+.band--follow{padding-top:clamp(18px,3vw,44px)}
 .sec-head{margin-bottom:clamp(44px,5vw,72px)}
 
 /* ---------- Portail (canvas de fond) ---------- */
@@ -368,10 +369,6 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;font-weight:800;line-height:1.02;margi
 .pgal img{width:100%;display:block}
 @media (max-width:1000px){.pgal{columns:3}}
 @media (max-width:680px){.pgal{columns:2;column-gap:10px}}
-.pnav{position:absolute;top:50%;transform:translateY(-50%);z-index:3;width:48px;height:48px;border-radius:50%;
-  background:rgba(11,4,22,.75);border:1px solid var(--edge);color:var(--mist);cursor:pointer;display:grid;place-items:center}
-.pnav.prev{left:16px}.pnav.next{right:16px}
-.pnav svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8}
 .rail{display:none}
 
 /* ---------- Lightbox ---------- */
@@ -390,6 +387,44 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;font-weight:800;line-height:1.02;margi
 .lightbox-close{
   position:absolute;top:22px;right:22px;width:46px;height:46px;border-radius:50%;
   background:var(--glass);border:1px solid var(--edge);color:var(--mist);cursor:pointer;font-size:1.1rem;
+}
+
+/* ---------- Visionneuse photo plein écran ---------- */
+.plightbox{
+  position:fixed;inset:0;z-index:170;display:flex;align-items:center;justify-content:center;padding:min(5vh,54px) min(5vw,80px);
+  background:rgba(2,1,5,.96);backdrop-filter:blur(20px);
+  opacity:0;visibility:hidden;transition:opacity .4s,visibility .4s;
+}
+.plightbox.on{opacity:1;visibility:visible}
+.plb-stage{margin:0;max-width:100%;max-height:100%;display:flex;align-items:center;justify-content:center}
+.plb-stage img{
+  max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;display:block;
+  border-radius:10px;box-shadow:0 30px 120px -30px rgba(199,125,255,.5);
+  opacity:0;transform:scale(.98);transition:opacity .35s,transform .45s var(--ease);
+}
+.plightbox.on .plb-stage img{opacity:1;transform:scale(1)}
+.plb-close{
+  position:absolute;top:20px;right:22px;z-index:2;width:46px;height:46px;border-radius:50%;
+  background:rgba(11,4,22,.7);border:1px solid var(--edge);color:var(--mist);cursor:pointer;font-size:1.05rem;
+  transition:background .3s,border-color .3s;
+}
+.plb-close:hover{background:rgba(199,125,255,.22);border-color:var(--neon)}
+.plb-nav{
+  position:absolute;top:50%;transform:translateY(-50%);z-index:2;width:52px;height:52px;border-radius:50%;
+  background:rgba(11,4,22,.7);border:1px solid var(--edge);color:var(--mist);cursor:pointer;
+  display:grid;place-items:center;transition:background .3s,border-color .3s;
+}
+.plb-nav:hover{background:rgba(199,125,255,.22);border-color:var(--neon)}
+.plb-nav svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8}
+.plb-nav.prev{left:18px}
+.plb-nav.next{right:18px}
+.plb-count{
+  position:absolute;bottom:22px;left:50%;transform:translateX(-50%);z-index:2;
+  font-family:'Sora',sans-serif;font-size:.72rem;letter-spacing:.14em;color:var(--mute);
+}
+@media (max-width:600px){
+  .plightbox{padding:16px}
+  .plb-nav{width:44px;height:44px}.plb-nav.prev{left:8px}.plb-nav.next{right:8px}
 }
 
 /* ---------- Formules ---------- */
@@ -829,7 +864,7 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;font-weight:800;line-height:1.02;margi
 </section>
 
 <!-- ============ GALERIE PHOTO ============ -->
-<section class="band" id="photos" style="display:none">
+<section class="band band--follow" id="photos" style="display:none">
   <div class="shell">
     <header class="sec-head">
       <p class="eyebrow rv">En images</p>
@@ -1130,10 +1165,19 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;font-weight:800;line-height:1.02;margi
   </div>
 </footer>
 
-<!-- ============ LIGHTBOX ============ -->
+<!-- ============ LIGHTBOX VIDÉO ============ -->
 <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Vidéo en grand">
   <button class="lightbox-close" id="lbClose" aria-label="Fermer">✕</button>
   <div class="lightbox-media" id="lbMedia"></div>
+</div>
+
+<!-- ============ VISIONNEUSE PHOTO (plein écran) ============ -->
+<div class="plightbox" id="plightbox" role="dialog" aria-modal="true" aria-label="Photo en grand">
+  <button class="plb-close" id="plbClose" aria-label="Fermer">✕</button>
+  <button class="plb-nav prev" id="plbPrev" aria-label="Photo précédente"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+  <figure class="plb-stage"><img id="plbImg" alt=""></figure>
+  <button class="plb-nav next" id="plbNext" aria-label="Photo suivante"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+  <span class="plb-count" id="plbCount"></span>
 </div>
 
 <script>
@@ -1363,42 +1407,52 @@ function applyContent(c){
   if (c.musique && c.musique.url) setupMusic(c.musique);
 }
 
-/* Lecteur de musique + bouton visiteur (couper / relancer) */
+/* Lecteur de musique — lecture automatique dès l'arrivée.
+   Les navigateurs bloquent le son automatique tant que le visiteur
+   n'a pas interagi avec la page (politique anti-nuisance). On tente
+   la lecture immédiatement ; si elle est bloquée, on la relance au
+   tout premier geste (mouvement de souris, scroll, clic, touche) —
+   soit quasi instantanément. Le bouton en bas coupe / remet le son. */
 function setupMusic(m){
   if (!m.actif || !m.url) return;
-  if (document.getElementById('bgMusic')) return; // déjà en place
+  if (document.getElementById('bgMusic')) return;
   const audio = document.createElement('audio');
   audio.id = 'bgMusic';
   audio.src = m.url;
   audio.loop = m.loop !== false;
+  audio.preload = 'auto';
   audio.volume = Math.min(1, Math.max(0, (m.volume ?? 50) / 100));
   document.body.appendChild(audio);
 
   const btn = document.createElement('button');
-  btn.id = 'musicToggle';
-  btn.type = 'button';
+  btn.id = 'musicToggle'; btn.type = 'button';
   document.body.appendChild(btn);
 
-  let playing = false;
+  let playing = false, wantOn = true; // on veut le son dès l'arrivée
   const render = () => {
     btn.classList.toggle('is-playing', playing);
-    btn.setAttribute('aria-label', playing ? 'Couper la musique' : 'Activer la musique');
+    btn.setAttribute('aria-label', playing ? 'Couper la musique' : 'Remettre la musique');
     btn.innerHTML = playing
       ? iconMusic(true) + '<span>Couper la musique</span>'
-      : iconMusic(false) + '<span>Activer la musique</span>';
+      : iconMusic(false) + '<span>Remettre la musique</span>';
   };
-  const play = () => audio.play().then(() => { playing = true; render(); }).catch(() => { playing = false; render(); });
+  const play = () => audio.play().then(() => { playing = true; render(); }).catch(() => { render(); });
   const pause = () => { audio.pause(); playing = false; render(); };
-  btn.addEventListener('click', () => playing ? pause() : play());
-  render();
+  btn.addEventListener('click', () => { wantOn = !playing; wantOn ? play() : pause(); });
 
-  // Démarrage automatique dès l'ouverture. Les navigateurs bloquent souvent
-  // le son tant que le visiteur n'a pas interagi : on tente tout de suite,
-  // et sinon on démarre au tout premier geste (clic, scroll, touche).
-  play();
-  const kick = () => { if (!playing) play(); cleanup(); };
-  const cleanup = () => ['pointerdown','scroll','keydown','touchstart'].forEach(ev => window.removeEventListener(ev, kick));
-  ['pointerdown','scroll','keydown','touchstart'].forEach(ev => window.addEventListener(ev, kick, { once: true, passive: true }));
+  // État optimiste : on affiche « Couper la musique » d'emblée.
+  playing = true; render();
+  // Tentative immédiate.
+  audio.play().then(() => { playing = true; render(); }).catch(() => { playing = false; render(); });
+
+  // Relance au tout premier geste si l'autoplay a été bloqué.
+  const events = ['pointerdown','pointermove','mousemove','scroll','keydown','touchstart','click'];
+  const kick = () => { if (wantOn && audio.paused) play(); cleanup(); };
+  const cleanup = () => events.forEach(ev => window.removeEventListener(ev, kick));
+  events.forEach(ev => window.addEventListener(ev, kick, { once: true, passive: true }));
+
+  audio.addEventListener('pause', () => { if (wantOn) { playing = false; render(); } });
+  audio.addEventListener('play', () => { playing = true; render(); });
 }
 function iconMusic(on){
   return on
@@ -1435,32 +1489,39 @@ function renderPhotos(list){
   sec.style.display = '';
   sec.querySelectorAll('.rv').forEach(n => n.classList.add('in'));
 
-  const lb = document.getElementById('lightbox');
-  const lbm = document.getElementById('lbMedia');
+  const plb = document.getElementById('plightbox');
+  const img = document.getElementById('plbImg');
+  const count = document.getElementById('plbCount');
   let cur = 0;
   const show = i => {
     cur = (i + list.length) % list.length;
-    lbm.innerHTML = '<img src="' + list[cur].url + '" alt="" style="width:100%;height:100%;object-fit:contain">' +
-      '<button class="pnav prev" aria-label="Précédente"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>' +
-      '<button class="pnav next" aria-label="Suivante"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>';
-    lbm.querySelector('.pnav.prev').addEventListener('click', e => { e.stopPropagation(); show(cur - 1); });
-    lbm.querySelector('.pnav.next').addEventListener('click', e => { e.stopPropagation(); show(cur + 1); });
+    img.src = list[cur].url;
+    count.textContent = (cur + 1) + ' / ' + list.length;
   };
-  const open = i => { show(i); lb.classList.add('on'); document.body.classList.add('is-locked'); };
-  const close = () => { lb.classList.remove('on'); lbm.innerHTML = ''; document.body.classList.remove('is-locked'); };
+  const open = i => { show(i); plb.classList.add('on'); document.body.classList.add('is-locked'); };
+  const close = () => { plb.classList.remove('on'); document.body.classList.remove('is-locked'); setTimeout(() => { img.src = ''; }, 400); };
 
   grid.querySelectorAll('figure').forEach(f => {
     f.addEventListener('click', () => open(+f.dataset.i));
     f.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); open(+f.dataset.i); } });
   });
-  lb.addEventListener('click', e => { if (e.target === lb) close(); });
+  document.getElementById('plbPrev').addEventListener('click', () => show(cur - 1));
+  document.getElementById('plbNext').addEventListener('click', () => show(cur + 1));
+  document.getElementById('plbClose').addEventListener('click', close);
+  plb.addEventListener('click', e => { if (e.target === plb || e.target.classList.contains('plb-stage')) close(); });
   document.addEventListener('keydown', e => {
-    if (!lb.classList.contains('on')) return;
+    if (!plb.classList.contains('on')) return;
     if (e.key === 'Escape') close();
-    if (e.key === 'ArrowLeft') show(cur - 1);
-    if (e.key === 'ArrowRight') show(cur + 1);
+    else if (e.key === 'ArrowLeft') show(cur - 1);
+    else if (e.key === 'ArrowRight') show(cur + 1);
   });
-  document.getElementById('lbClose').addEventListener('click', close);
+  // Glissé tactile pour naviguer
+  let tx = 0;
+  plb.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, { passive: true });
+  plb.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - tx;
+    if (Math.abs(dx) > 45) show(cur + (dx < 0 ? 1 : -1));
+  }, { passive: true });
 }
 
 function renderReviews(list){
