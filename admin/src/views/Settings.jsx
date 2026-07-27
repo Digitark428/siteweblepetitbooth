@@ -1,3 +1,4 @@
+import SaveBar from "../components/SaveBar.jsx";
 import React, { useState } from "react";
 import { Image as ImageIcon, RotateCcw, History } from "lucide-react";
 import { useContent } from "../lib/content.jsx";
@@ -77,6 +78,7 @@ export default function Settings() {
 
       {pick && <MediaPicker kind="image" onClose={() => setPick(null)}
         onPick={a => { set(pick === "logo" ? "identite.logoUrl" : "identite.faviconUrl", a.url); setPick(null); }} />}
+    <SaveBar />
     </div>
   );
 }

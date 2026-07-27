@@ -1,3 +1,4 @@
+import SaveBar from "../components/SaveBar.jsx";
 import React, { useState } from "react";
 import { Plus, Trash2, Image as ImageIcon } from "lucide-react";
 import { useContent } from "../lib/content.jsx";
@@ -63,6 +64,7 @@ export default function HomeEditor() {
 
       {pickPhoto && <MediaPicker kind="image" onClose={() => setPickPhoto(false)}
         onPick={a => { set("hero.photoUrl", a.url); setPickPhoto(false); }} />}
+    <SaveBar />
     </div>
   );
 }

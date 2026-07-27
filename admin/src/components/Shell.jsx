@@ -2,7 +2,7 @@ import React from "react";
 import {
   Camera, LayoutDashboard, Home, Images, Star, Layers, Calendar as CalIcon,
   Inbox, FolderOpen, Music, Settings, BarChart3, LogOut, Eye, CircleDot, Bell,
-  Undo2, UploadCloud, Check
+  Undo2, UploadCloud, Check, ArrowLeft
 } from "lucide-react";
 import { useAuth } from "../lib/auth.jsx";
 import { useContent } from "../lib/content.jsx";
@@ -63,12 +63,7 @@ export default function Shell({ view, setView, nbNouvelles, children }) {
           {nbNouvelles > 0 && (
             <span className="chip chip--pink"><Bell size={13} /> {nbNouvelles} nouvelle{nbNouvelles > 1 ? "s" : ""}</span>
           )}
-          {dirty
-            ? <span className="chip"><CircleDot size={13} /> Modifications non publiées</span>
-            : <span className="chip" style={{ color: "#8ff0b0", borderColor: "rgba(126,231,159,.3)" }}><Check size={13} /> À jour</span>}
-          {dirty && <button className="btn btn--ghost btn--sm" onClick={onDiscard}><Undo2 size={14} /> Annuler</button>}
-          <button className="btn btn--ghost btn--sm" onClick={preview}><Eye size={14} /> Prévisualiser</button>
-          <button className="btn btn--sm" onClick={onPublish} disabled={!dirty}><UploadCloud size={14} /> Publier</button>
+          <a className="btn btn--ghost btn--sm" href="../" target="_blank" rel="noopener"><ArrowLeft size={14} /> Retour au site public</a>
         </header>
         <div className="view">{children}</div>
       </main>

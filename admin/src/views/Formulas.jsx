@@ -1,3 +1,4 @@
+import SaveBar from "../components/SaveBar.jsx";
 import React from "react";
 import { Plus, Trash2, Star } from "lucide-react";
 import { useContent } from "../lib/content.jsx";
@@ -52,6 +53,7 @@ export default function Formulas() {
           <Area label="Texte" value={content.surMesure} onChange={v => set("surMesure", v)} />
         </Card>
       </div>
+    <SaveBar />
     </div>
   );
 }

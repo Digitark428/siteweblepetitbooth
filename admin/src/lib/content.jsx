@@ -114,17 +114,23 @@ export function ContentProvider({ children }) {
 
   const publish = useCallback(async () => {
     const snapshot = content;
-    if (hasSupabase) {
-      // archive l'ancienne version publiée
-      await supabase.from("content_history").insert({ snapshot: published, label: "Version du " + new Date().toLocaleString("fr-FR") });
-      await supabase.from("site_content").update({ published: snapshot, draft: snapshot, updated_at: new Date().toISOString() }).eq("id", 1);
-      const h = await supabase.from("content_history").select("id, label, published_at").order("published_at", { ascending: false });
-      setHistory(h.data || []);
-    } else {
-      demo.history = [{ id: "h" + Date.now(), label: "Version du " + new Date().toLocaleString("fr-FR"), published_at: new Date().toISOString() }, ...demo.history];
-      demo.published = snapshot; demo.draft = snapshot; setHistory(demo.history);
+    try {
+      if (hasSupabase) {
+        // archive l'ancienne version publiée
+        await supabase.from("content_history").insert({ snapshot: published, label: "Version du " + new Date().toLocaleString("fr-FR") });
+        const { error } = await supabase.from("site_content").update({ published: snapshot, draft: snapshot, updated_at: new Date().toISOString() }).eq("id", 1);
+        if (error) throw error;
+        const h = await supabase.from("content_history").select("id, label, published_at").order("published_at", { ascending: false });
+        setHistory(h.data || []);
+      } else {
+        demo.history = [{ id: "h" + Date.now(), label: "Version du " + new Date().toLocaleString("fr-FR"), published_at: new Date().toISOString() }, ...demo.history];
+        demo.published = snapshot; demo.draft = snapshot; setHistory(demo.history);
+      }
+      setPublished(snapshot); setDirty(false);
+      return { error: null };
+    } catch (err) {
+      return { error: err };
     }
-    setPublished(snapshot); setDirty(false);
   }, [content, published]);
 
   const discard = useCallback(async () => {

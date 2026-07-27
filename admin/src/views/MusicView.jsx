@@ -1,3 +1,4 @@
+import SaveBar from "../components/SaveBar.jsx";
 import React, { useState, useRef } from "react";
 import { Music, Play, Pause } from "lucide-react";
 import { useContent } from "../lib/content.jsx";
@@ -36,12 +37,13 @@ export default function MusicView() {
         <Toggle label="Lecture automatique à l'ouverture" checked={m.autoplay} onChange={v => set("musique.autoplay", v)} />
         <Toggle label="Lecture en boucle" checked={m.loop} onChange={v => set("musique.loop", v)} />
         <p style={{ fontSize: ".74rem", color: "var(--mute)", margin: 0 }}>
-          Note : les navigateurs bloquent souvent le son automatique tant que le visiteur n'a pas cliqué. Un petit bouton
-          « activer le son » sera proposé sur le site lors de l'intégration.
+          Note : les navigateurs bloquent souvent le son automatique tant que le visiteur n'a pas cliqué. Un bouton
+          « couper / relancer la musique » s'affiche automatiquement en bas à droite du site pour le visiteur.
         </p>
       </Card>
 
       {pick && <MediaPicker kind="audio" onClose={() => setPick(false)} onPick={a => { set("musique.url", a.url); setPick(false); }} />}
+    <SaveBar />
     </div>
   );
 }

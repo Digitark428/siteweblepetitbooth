@@ -214,6 +214,16 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;font-weight:800;line-height:1.02;margi
 }
 .nav-admin:hover{color:var(--neon);border-color:var(--edge);background:rgba(199,125,255,.08)}
 .nav-admin svg{width:18px;height:18px}
+/* Bouton musique flottant (couper / relancer) */
+#musicToggle{
+  position:fixed;right:20px;bottom:20px;z-index:110;width:50px;height:50px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;color:var(--mist);
+  background:rgba(11,4,22,.72);border:1px solid var(--edge);backdrop-filter:blur(10px);
+  box-shadow:0 10px 30px -12px rgba(199,125,255,.7);transition:transform .3s var(--ease),color .3s,border-color .3s;
+}
+#musicToggle:hover{transform:translateY(-2px) scale(1.05);color:var(--neon);border-color:var(--neon)}
+#musicToggle svg{width:20px;height:20px}
+@media (max-width:520px){#musicToggle{right:14px;bottom:14px;width:46px;height:46px}}
 .nav.open-menu .burger span:nth-child(1){transform:translateY(6.5px) rotate(45deg)}
 .nav.open-menu .burger span:nth-child(2){opacity:0}
 .nav.open-menu .burger span:nth-child(3){transform:translateY(-6.5px) rotate(-45deg)}
@@ -494,7 +504,11 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;font-weight:800;line-height:1.02;margi
   background:repeating-linear-gradient(45deg,rgba(255,77,141,.16) 0 3px,transparent 3px 6px);
 }
 .cal-d.pick{background:var(--grad-neon);color:#12030d;font-weight:700}
-.cal-legend{display:flex;gap:18px;margin-top:16px;font-size:.68rem;color:var(--mute)}
+.cal-d.devis{
+  color:var(--gold);opacity:.7;pointer-events:none;
+  background:repeating-linear-gradient(45deg,rgba(239,220,166,.16) 0 3px,transparent 3px 6px);
+}
+.cal-legend{display:flex;gap:18px;margin-top:16px;font-size:.68rem;color:var(--mute);flex-wrap:wrap}
 .cal-legend i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:6px;vertical-align:-1px}
 
 .form{
@@ -963,6 +977,7 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;font-weight:800;line-height:1.02;margi
         <div class="cal-legend">
           <span><i style="background:linear-gradient(100deg,#C77DFF,#FF4D8D)"></i>Votre date</span>
           <span><i style="background:rgba(255,77,141,.35)"></i>Déjà réservée</span>
+          <span><i style="background:rgba(239,220,166,.4)"></i>En attente (devis)</span>
         </div>
       </div>
     </div>
@@ -1205,6 +1220,67 @@ function applyContent(c){
     });
   }
   function setLast(a, val){ const s = a.querySelectorAll('span span'); if (s.length) s[s.length - 1].textContent = val; }
+
+  // Logo & favicon
+  if (c.identite){
+    if (c.identite.logoUrl){
+      const brand = document.querySelector('.brand');
+      if (brand){
+        const svg = brand.querySelector('svg');
+        if (svg){
+          const img = document.createElement('img');
+          img.src = c.identite.logoUrl; img.alt = 'Le Petit Booth';
+          img.style.cssText = 'height:34px;width:auto;display:block';
+          svg.replaceWith(img);
+        }
+      }
+    }
+    if (c.identite.faviconUrl){
+      let link = document.querySelector('link[rel="icon"]');
+      if (!link){ link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
+      link.href = c.identite.faviconUrl;
+    }
+  }
+
+  // Musique d'ambiance
+  if (c.musique && c.musique.url) setupMusic(c.musique);
+}
+
+/* Lecteur de musique + bouton visiteur (couper / relancer) */
+function setupMusic(m){
+  if (!m.actif || !m.url) return;
+  if (document.getElementById('bgMusic')) return; // déjà en place
+  const audio = document.createElement('audio');
+  audio.id = 'bgMusic';
+  audio.src = m.url;
+  audio.loop = m.loop !== false;
+  audio.volume = Math.min(1, Math.max(0, (m.volume ?? 50) / 100));
+  document.body.appendChild(audio);
+
+  const btn = document.createElement('button');
+  btn.id = 'musicToggle';
+  btn.setAttribute('aria-label', 'Activer ou couper la musique');
+  btn.innerHTML = iconMusic(false);
+  document.body.appendChild(btn);
+
+  let playing = false;
+  const setIcon = () => { btn.innerHTML = iconMusic(playing); };
+  const play = () => audio.play().then(() => { playing = true; setIcon(); }).catch(() => {});
+  const pause = () => { audio.pause(); playing = false; setIcon(); };
+  btn.addEventListener('click', () => playing ? pause() : play());
+
+  // Les navigateurs bloquent le son tant que le visiteur n'a pas interagi :
+  // si autoplay est demandé, on démarre au premier clic/scroll.
+  if (m.autoplay){
+    const start = () => { play(); window.removeEventListener('pointerdown', start); window.removeEventListener('scroll', start); };
+    window.addEventListener('pointerdown', start, { once: true });
+    window.addEventListener('scroll', start, { once: true, passive: true });
+  }
+}
+function iconMusic(on){
+  return on
+    ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>'
+    : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="m17 9 4 6M21 9l-4 6"/></svg>';
 }
 
 function renderPlans(formules){
@@ -1552,6 +1628,7 @@ const Calendar = (function(){
   const label = document.getElementById('calLabel');
   const input = document.getElementById('dateInput');
   const taken = new Set();
+  const status = {}; // date -> 'confirmee' | 'devis'
   let view = new Date(); view.setDate(1);
   let picked = null;
 
@@ -1580,7 +1657,10 @@ const Calendar = (function(){
       e.type = 'button'; e.className = 'cal-d'; e.textContent = d;
       e.setAttribute('aria-label', d + ' ' + MONTHS[view.getMonth()]);
       if (date < today) e.classList.add('past');
-      else if (taken.has(k)){ e.classList.add('taken'); e.setAttribute('aria-label', 'Date déjà réservée'); }
+      else if (taken.has(k)){
+        if (status[k] === 'devis'){ e.classList.add('devis'); e.setAttribute('aria-label', 'Date en attente de confirmation'); }
+        else { e.classList.add('taken'); e.setAttribute('aria-label', 'Date déjà réservée'); }
+      }
       else e.addEventListener('click', () => { picked = k; input.value = k; input.dispatchEvent(new Event('change')); render(); });
       if (picked === k) e.classList.add('pick');
       grid.appendChild(e);
@@ -1600,9 +1680,9 @@ const Calendar = (function(){
     const c = await getSupabase();
     if (!c) return;
     const from = new Date().toISOString().slice(0, 10);
-    const { data, error } = await c.from(CONFIG.datesView).select('date_evenement').gte('date_evenement', from);
+    const { data, error } = await c.from(CONFIG.datesView).select('date_evenement, statut').gte('date_evenement', from);
     if (error || !data) return;
-    data.forEach(r => taken.add(String(r.date_evenement).slice(0, 10)));
+    data.forEach(r => { const k = String(r.date_evenement).slice(0, 10); taken.add(k); status[k] = r.statut || 'confirmee'; });
     render();
   }
 

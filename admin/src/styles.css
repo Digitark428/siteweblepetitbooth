@@ -216,3 +216,16 @@ a{color:inherit}
 .field-lbl{font-family:'Sora',sans-serif;font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;
   color:var(--mute);margin-bottom:7px;display:block}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* ============ Barre d'enregistrement (SaveBar) ============ */
+.savebar{
+  position:sticky;bottom:0;margin:26px -26px -26px;padding:16px 26px;
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  background:linear-gradient(0deg,#0c0518,rgba(12,5,24,.86));
+  border-top:1px solid var(--edge);backdrop-filter:blur(10px);z-index:5;
+}
+.savebar-msg{font-size:.82rem}
+.savebar-msg .ok{color:#8ff0b0;display:inline-flex;align-items:center;gap:7px}
+.savebar-msg .ko{color:var(--magenta);display:inline-flex;align-items:center;gap:7px}
+.savebar-msg .pending{color:var(--gold)}
+.savebar-msg .clean{color:var(--mute)}
