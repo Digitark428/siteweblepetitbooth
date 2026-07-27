@@ -67,9 +67,9 @@
       "mainEntity": [
         { "@type": "Question", "name": "Vous vous déplacez partout à La Réunion ?", "acceptedAnswer": { "@type": "Answer", "text": "Oui. Nous intervenons sur toute l'île, du Nord au Sud, de l'Ouest à l'Est, ainsi que dans les Hauts. Les frais de déplacement sont inclus dans un rayon de 30 km ; au-delà, un forfait est indiqué sur votre devis." } },
         { "@type": "Question", "name": "Les vidéos sont-elles envoyées immédiatement ?", "acceptedAnswer": { "@type": "Answer", "text": "Oui. Chaque vidéo est montée sur place en quelques secondes et partagée immédiatement par QR code, AirDrop, SMS ou e-mail. Vos invités repartent avec leur vidéo dans la poche." } },
-        { "@type": "Question", "name": "Combien de personnes peuvent monter sur la plateforme ?", "acceptedAnswer": { "@type": "Answer", "text": "La plateforme accueille confortablement 1 à 4 personnes. Elle supporte jusqu'à 250 kg et reste parfaitement stable, y compris avec des enfants." } },
+        { "@type": "Question", "name": "Combien de personnes peuvent monter sur la plateforme ?", "acceptedAnswer": { "@type": "Answer", "text": "Une à trois personnes maximum. Les enfants doivent toujours être accompagnés d'un adulte. Un animateur est présent pendant toute la prestation, mais nous demandons aux parents de rester vigilants afin que les enfants ne jouent pas autour de la plateforme." } },
         { "@type": "Question", "name": "L'installation est-elle comprise ?", "acceptedAnswer": { "@type": "Answer", "text": "Oui, l'installation complète est comprise dans toutes les formules. Nous arrivons en avance, montons la plateforme, les lumières et le son, testons tout, puis démontons après la prestation." } },
-        { "@type": "Question", "name": "Peut-on personnaliser les vidéos ?", "acceptedAnswer": { "@type": "Answer", "text": "Oui. Cadre aux couleurs de votre événement, prénoms, date, logo d'entreprise, musique et voix off personnalisée : tout est adapté à votre univers avant le jour J." } },
+        { "@type": "Question", "name": "Peut-on personnaliser la vidéo ?", "acceptedAnswer": { "@type": "Answer", "text": "Oui. Toute la personnalisation (logo, couleurs, musique, animation) est réalisée avant l'événement. Elle ne pourra plus être modifiée le jour de la prestation." } },
         { "@type": "Question", "name": "Quels types d'événements acceptez-vous ?", "acceptedAnswer": { "@type": "Answer", "text": "Mariages, anniversaires, baptêmes, soirées privées, séminaires, soirées d'entreprise, inaugurations, événements de collectivités et animations commerciales." } }
       ]
     }
@@ -207,6 +207,13 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;font-weight:800;line-height:1.02;margi
 .burger{display:none;background:none;border:1px solid var(--edge);border-radius:12px;padding:9px 11px;cursor:pointer}
 .burger span{display:block;width:19px;height:1.5px;background:var(--mist);border-radius:2px;transition:.35s var(--ease)}
 .burger span+span{margin-top:5px}
+/* Accès admin discret (icône caméra) */
+.nav-admin{
+  width:38px;height:38px;border-radius:11px;display:grid;place-items:center;
+  color:var(--mute);border:1px solid var(--edge-soft);transition:color .3s,border-color .3s,background .3s;
+}
+.nav-admin:hover{color:var(--neon);border-color:var(--edge);background:rgba(199,125,255,.08)}
+.nav-admin svg{width:18px;height:18px}
 .nav.open-menu .burger span:nth-child(1){transform:translateY(6.5px) rotate(45deg)}
 .nav.open-menu .burger span:nth-child(2){opacity:0}
 .nav.open-menu .burger span:nth-child(3){transform:translateY(-6.5px) rotate(-45deg)}
@@ -237,6 +244,15 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;font-weight:800;line-height:1.02;margi
 
 /* ---------- Hero ---------- */
 .hero{position:relative;min-height:100svh;display:grid;align-items:center;padding-block:120px 90px;z-index:2}
+/* Photo de fond : couche fixe placée SOUS le canvas de particules (z-index:0)
+   pour que les particules restent devant la photo. Pilotable depuis l'admin. */
+.hero-photo{
+  position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background-size:cover;background-repeat:no-repeat;
+  background-position:var(--hero-pos,50% 50%);
+  opacity:0;transition:opacity .4s linear;
+}
+.hero-photo.on{opacity:var(--hero-opacity,.5)}
 .hero-video{position:absolute;inset:0;overflow:hidden;z-index:-1}
 .hero-video video{width:100%;height:100%;object-fit:cover;opacity:.42}
 .hero-video::after{
@@ -253,6 +269,8 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;font-weight:800;line-height:1.02;margi
 .hero-claim{margin:34px auto 0;max-width:44ch;color:var(--mute);font-size:1.02rem}
 .hero-claim b{display:block;color:var(--mist);font-weight:500}
 .hero-cta{margin-top:42px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+/* Boutons du hero volontairement plus compacts (~12%) que le style global */
+.hero-cta .btn{font-size:.7rem;letter-spacing:.13em;padding:15px 30px}
 .scroll-hint{
   position:absolute;bottom:28px;left:50%;transform:translateX(-50%);
   font-family:'Sora',sans-serif;font-size:.55rem;letter-spacing:.4em;text-transform:uppercase;color:var(--mute);
@@ -263,7 +281,7 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;font-weight:800;line-height:1.02;margi
 
 /* ---------- Manifeste ---------- */
 .manifest{text-align:center;display:grid;gap:clamp(20px,3.4vw,38px);max-width:900px;margin-inline:auto}
-.manifest p{margin:0;font-family:'Sora',sans-serif;font-weight:200;font-size:clamp(1.1rem,3.2vw,2rem);line-height:1.35;color:var(--mute)}
+.manifest p{margin:0;font-family:'Sora',sans-serif;font-weight:200;font-size:clamp(1rem,2.7vw,1.68rem);line-height:1.4;color:var(--mute)}
 .manifest p.hi{font-weight:600;color:transparent;background:var(--grad-neon);-webkit-background-clip:text;background-clip:text}
 .manifest p.fin{font-weight:800;font-size:clamp(2rem,7vw,4.4rem);text-transform:uppercase;letter-spacing:-.04em}
 
@@ -380,6 +398,12 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;font-weight:800;line-height:1.02;margi
   background:var(--grad-neon);box-shadow:0 0 12px rgba(199,125,255,.8);
 }
 .plan-note{font-size:.76rem;color:var(--mute);text-align:center;margin:14px 0 0}
+.plan-note--hl{
+  font-size:1rem;color:var(--mist);max-width:60ch;margin:30px auto 0;
+  padding:22px 30px;border-radius:16px;background:rgba(199,125,255,.06);
+  border:1px solid var(--edge-soft);line-height:1.6;
+}
+.plan-note--hl b{color:transparent;background:var(--grad-neon);-webkit-background-clip:text;background-clip:text;font-weight:700}
 
 /* ---------- Processus ---------- */
 .steps{position:relative;display:grid;gap:6px;max-width:840px;margin-inline:auto}
@@ -410,6 +434,19 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;font-weight:800;line-height:1.02;margi
 }
 .avis-who b{display:block;font-size:.9rem;font-weight:600}
 .avis-who span{font-size:.76rem;color:var(--mute)}
+.avis-voice{
+  display:inline-flex;align-items:center;gap:9px;border:1px solid var(--edge);
+  background:rgba(199,125,255,.1);color:var(--neon);border-radius:999px;
+  padding:11px 20px;font-family:'Sora',sans-serif;font-size:.78rem;font-weight:600;
+  cursor:pointer;transition:transform .3s var(--ease),background .3s;
+}
+.avis-voice:hover{transform:translateY(-2px);background:rgba(199,125,255,.18)}
+.voice-review{flex:1;display:flex;align-items:center}
+
+/* ---------- Compteur clients ---------- */
+.counter-num{font-family:'Sora',sans-serif;font-weight:800;font-size:clamp(3.6rem,12vw,7rem);line-height:1;letter-spacing:-.04em}
+.counter-plus{-webkit-text-fill-color:var(--neon);color:var(--neon)}
+.counter-txt{font-family:'Sora',sans-serif;font-weight:300;text-transform:uppercase;letter-spacing:.16em;font-size:clamp(.72rem,2vw,1rem);color:var(--mute);margin:14px 0 0}
 
 /* ---------- FAQ ---------- */
 .faq{max-width:860px;margin-inline:auto;display:grid;gap:10px}
@@ -578,6 +615,7 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;font-weight:800;line-height:1.02;margi
   <div class="gate-iris"></div>
 </div>
 
+<div class="hero-photo" id="heroPhoto" aria-hidden="true"></div>
 <canvas id="portal" aria-hidden="true"></canvas>
 <div class="veil" aria-hidden="true"></div>
 
@@ -607,9 +645,16 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;font-weight:800;line-height:1.02;margi
     </ul>
   </nav>
 
-  <button class="burger" id="burger" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="menu">
-    <span></span><span></span><span></span>
-  </button>
+  <div style="display:flex;align-items:center;gap:10px">
+    <a class="nav-admin" href="./admin/" aria-label="Administration" title="Administration">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+        <path d="M4 8h3l1.5-2.2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.6"/>
+      </svg>
+    </a>
+    <button class="burger" id="burger" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
 </header>
 
 <main>
@@ -623,15 +668,15 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;font-weight:800;line-height:1.02;margi
 
   <div class="hero-inner shell">
     <p class="eyebrow rv">Vidéo Booth 360 · La Réunion</p>
-    <h1 class="rv rv-d1"><span class="neon-t">ENTREZ</span></h1>
-    <p class="hero-sub rv rv-d2">dans une autre dimension</p>
+    <h1 class="rv rv-d1"><span class="neon-t" data-cms="hero.titre">ENTREZ</span></h1>
+    <p class="hero-sub rv rv-d2" data-cms="hero.sousTitre">dans une autre dimension</p>
     <p class="hero-claim rv rv-d3">
-      <b>Bien plus qu'un Vidéo Booth.</b>
-      Une expérience dont vos invités se souviendront.
+      <b data-cms="hero.claimFort">Bien plus qu'un Vidéo Booth.</b>
+      <span data-cms="hero.claim">Une expérience dont vos invités se souviendront.</span>
     </p>
     <div class="hero-cta rv rv-d4">
-      <a class="btn" href="#reservation">Réserver ma date</a>
-      <a class="btn btn--ghost" href="#galerie">Voir l'expérience</a>
+      <a class="btn" href="#reservation" data-cms="hero.ctaPrincipal" data-track="reserve_click">Réserver ma date</a>
+      <a class="btn btn--ghost" href="#galerie" data-cms="hero.ctaSecondaire">Voir l'expérience</a>
     </div>
   </div>
 
@@ -692,8 +737,8 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;font-weight:800;line-height:1.02;margi
       </article>
       <article class="card rv rv-d6">
         <div class="card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 4v2M12 18v2M4 12h2M18 12h2"/></svg></div>
-        <h3>Lumières & ambiance</h3>
-        <p>Anneau lumineux, halos colorés et machine à effets : le booth devient le centre de gravité de la soirée.</p>
+        <h3>Lumière d'ambiance</h3>
+        <p>Lumière d'ambiance LED pour une immersion élégante autour du Vidéo Booth. Le booth devient le centre de gravité de la soirée.</p>
       </article>
       <article class="card rv rv-d7">
         <div class="card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 8h16v12H4z"/><path d="M4 12h16"/><path d="M12 8V5a2.5 2.5 0 1 0-2.5 2.5H12zM12 8V5a2.5 2.5 0 1 1 2.5 2.5H12z"/></svg></div>
@@ -702,8 +747,8 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;font-weight:800;line-height:1.02;margi
       </article>
       <article class="card rv rv-d8">
         <div class="card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="8" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9.5" r="2.6"/><path d="M15 20a5.4 5.4 0 0 1 6.5-3.4"/></svg></div>
-        <h3>Animateur dédié</h3>
-        <p>Sur la formule Signature, un animateur accompagne vos invités et fait vivre l'expérience toute la soirée.</p>
+        <h3>Animateur inclus</h3>
+        <p>Compris dans toutes les formules. Il installe le Vidéo Booth, accueille les invités, explique son fonctionnement, anime et motive les passages, aide à l'envoi des vidéos, puis démonte le matériel.</p>
       </article>
     </div>
   </div>
@@ -737,7 +782,7 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;font-weight:800;line-height:1.02;margi
       <h2 class="h-sec lux rv rv-d1">Choisissez<br>votre formule</h2>
     </header>
 
-    <div class="grid-plans">
+    <div class="grid-plans" data-cms-plans>
       <article class="plan rv">
         <h3>Essentiel</h3>
         <p class="plan-tag">L'essentiel pour capturer vos premiers souvenirs</p>
@@ -779,14 +824,14 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;font-weight:800;line-height:1.02;margi
         <hr>
         <ul>
           <li>Toute la formule Expérience comprise</li>
-          <li>Présence sur toute la durée de votre événement (8 h maximum)</li>
-          <li>Film des coulisses et réactions de vos invités</li>
-          <li>Animateur dédié pour dynamiser et accompagner vos invités</li>
+          <li>Prestation jusqu'à 8 h maximum</li>
+          <li><b>Animateur principal :</b> installation, animation, accompagnement des invités, envoi des vidéos et démontage</li>
+          <li><b>Deuxième animateur</b> sur des moments clés définis à l'avance : il va chercher les invités, les motive à monter sur le Vidéo Booth, crée l'ambiance et filme les coulisses (il n'est pas présent toute la prestation)</li>
         </ul>
         <button class="btn btn--ghost btn--wide" data-plan="Signature">Réserver cette formule</button>
       </article>
     </div>
-    <p class="plan-note rv">Un besoin particulier ? Demandez une formule sur mesure dans le formulaire de réservation.</p>
+    <p class="plan-note plan-note--hl rv" data-cms-surmesure>Un besoin particulier ? Composez votre <b>formule sur mesure</b> : dites-nous votre événement dans le formulaire de réservation, on s'adapte à votre budget et à vos envies.</p>
   </div>
 </section>
 
@@ -804,7 +849,7 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;font-weight:800;line-height:1.02;margi
         <p>Essentiel, Expérience, Signature ou sur mesure. On vous aide à trancher si vous hésitez.</p></div></li>
       <li class="step rv rv-d1"><div class="step-n">2</div><div class="step-b">
         <h3>Vous réservez votre date</h3>
-        <p>Réponse sous 24 h avec un devis clair. Votre date est bloquée dès l'acompte versé.</p></div></li>
+        <p>Réponse quasi immédiate — dans la majorité des cas en moins de deux heures — avec un devis clair. Votre date est bloquée dès l'acompte versé.</p></div></li>
       <li class="step rv rv-d2"><div class="step-n">3</div><div class="step-b">
         <h3>Le Petit Booth installe tout</h3>
         <p>Nous arrivons en avance, montons la plateforme, réglons lumières et son, et testons avant l'arrivée des invités.</p></div></li>
@@ -826,7 +871,7 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;font-weight:800;line-height:1.02;margi
       <h2 class="h-sec lux rv rv-d1">Avis clients</h2>
     </header>
 
-    <div class="grid-avis">
+    <div class="grid-avis" data-cms-reviews>
       <article class="avis rv">
         <div class="stars" aria-label="5 étoiles sur 5">
           <svg viewBox="0 0 24 24"><path d="M12 2l3 6.5 7 .9-5 4.9 1.2 7L12 18l-6.2 3.3L7 14.3 2 9.4l7-.9z"/></svg>
@@ -866,6 +911,14 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;font-weight:800;line-height:1.02;margi
   </div>
 </section>
 
+<!-- ============ COMPTEUR CLIENTS ============ -->
+<section class="band band--tight" id="compteur" data-count="185">
+  <div class="shell" style="text-align:center">
+    <p class="counter-num lux rv"><span id="countVal">0</span><span class="counter-plus">+</span></p>
+    <p class="counter-txt rv rv-d1" id="countTxt" data-cms="compteur.texte">événements immortalisés à La Réunion</p>
+  </div>
+</section>
+
 <!-- ============ FAQ ============ -->
 <section class="band" id="faq">
   <div class="shell">
@@ -880,11 +933,11 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;font-weight:800;line-height:1.02;margi
       <details class="rv rv-d1"><summary>Les vidéos sont-elles envoyées immédiatement ?</summary>
         <p class="faq-a">Oui. Chaque vidéo est montée sur place en quelques secondes puis partagée par QR code, AirDrop, SMS ou e-mail. Vos invités repartent avec leur vidéo dans la poche, et vous retrouvez tout dans la galerie privée.</p></details>
       <details class="rv rv-d2"><summary>Combien de personnes peuvent monter sur la plateforme ?</summary>
-        <p class="faq-a">La plateforme accueille confortablement 1 à 4 personnes et supporte jusqu'à 250 kg. Elle reste parfaitement stable, y compris avec des enfants. Nous surveillons chaque passage.</p></details>
+        <p class="faq-a">Une à trois personnes maximum. Les enfants doivent toujours être accompagnés d'un adulte. Même si un animateur est présent pendant toute la prestation, nous demandons aux parents de rester vigilants afin que les enfants ne jouent pas autour de la plateforme.</p></details>
       <details class="rv rv-d3"><summary>L'installation est-elle comprise ?</summary>
         <p class="faq-a">Oui, dans toutes les formules. Nous arrivons en avance, montons la plateforme, les lumières et le son, testons l'ensemble, puis démontons après la prestation. Vous n'avez rien à gérer.</p></details>
-      <details class="rv rv-d4"><summary>Peut-on personnaliser les vidéos ?</summary>
-        <p class="faq-a">Oui. Cadre aux couleurs de votre événement, prénoms, date, logo d'entreprise, musique et voix off personnalisée : nous préparons tout avec vous avant le jour J.</p></details>
+      <details class="rv rv-d4"><summary>Peut-on personnaliser la vidéo ?</summary>
+        <p class="faq-a">Oui. Toute la personnalisation (logo, couleurs, musique, animation…) est réalisée avant l'événement. Elle ne pourra plus être modifiée le jour de la prestation.</p></details>
       <details class="rv rv-d5"><summary>Quels types d'événements acceptez-vous ?</summary>
         <p class="faq-a">Mariages, anniversaires, baptêmes, soirées privées, séminaires, soirées d'entreprise, inaugurations, événements de collectivités et animations commerciales. Si votre projet sort du cadre, parlez-nous-en.</p></details>
     </div>
@@ -898,7 +951,7 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;font-weight:800;line-height:1.02;margi
     <div class="book-side">
       <p class="eyebrow rv">Réservation</p>
       <h2 class="h-sec lux rv rv-d1">Réservez<br>votre date</h2>
-      <p class="lede rv rv-d2" style="margin-top:22px">Les dates de week-end partent vite en saison. Vérifiez la disponibilité, nous revenons vers vous sous 24 h.</p>
+      <p class="lede rv rv-d2" style="margin-top:22px">Les dates de week-end partent vite en saison. Vérifiez la disponibilité, nous revenons vers vous très vite, souvent en moins de deux heures.</p>
 
       <div class="cal rv rv-d3" id="cal">
         <div class="cal-top">
@@ -955,7 +1008,7 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;font-weight:800;line-height:1.02;margi
         </label>
 
         <button class="btn btn--wide" type="submit" id="submitBtn">✨ Vérifier la disponibilité</button>
-        <p class="form-note" id="formNote">Réponse sous 24 h · Sans engagement</p>
+        <p class="form-note" id="formNote">Réponse rapide · Sans engagement</p>
       </form>
 
       <div class="done" id="done">
@@ -963,7 +1016,7 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;font-weight:800;line-height:1.02;margi
           <svg viewBox="0 0 24 24"><path d="M4 12.5l5.5 5.5L20 7"/></svg>
         </div>
         <h3 class="lux">Merci !</h3>
-        <p>Votre demande de réservation a bien été envoyée. Nous reviendrons vers vous sous 24 heures.</p>
+        <p>Votre demande de réservation a bien été envoyée. Nous revenons vers vous très rapidement, dans la majorité des cas en moins de deux heures.</p>
         <p style="margin-top:26px"><a class="btn btn--ghost" href="#accueil">Retour à l'accueil</a></p>
       </div>
     </div>
@@ -978,19 +1031,19 @@ h1,h2,h3,h4{font-family:'Sora',sans-serif;font-weight:800;line-height:1.02;margi
     <p class="lede rv rv-d2" style="margin:22px auto 0">Réservez votre date dès maintenant et offrez une expérience unique à vos invités.</p>
 
     <div class="contact" style="text-align:left">
-      <a class="ct rv rv-d1" href="mailto:lepetitbooth@gmail.com">
+      <a class="ct rv rv-d1" href="mailto:lepetitbooth@gmail.com" data-cms-contact="email">
         <span class="ct-ico"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7l8.5 6 8.5-6"/></svg></span>
         <span><b>E-mail</b><span>lepetitbooth@gmail.com</span></span>
       </a>
-      <a class="ct rv rv-d2" href="tel:+262693813858">
+      <a class="ct rv rv-d2" href="tel:+262693813858" data-cms-contact="telephone">
         <span class="ct-ico"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a12 12 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2.2 2A16.5 16.5 0 0 1 3 6.2 2 2 0 0 1 5 4z"/></svg></span>
         <span><b>Téléphone</b><span>0693 813 858</span></span>
       </a>
-      <a class="ct rv rv-d3" href="https://wa.me/262693813858" target="_blank" rel="noopener">
+      <a class="ct rv rv-d3" href="https://wa.me/262693813858" target="_blank" rel="noopener" data-cms-contact="whatsapp">
         <span class="ct-ico"><svg viewBox="0 0 24 24"><path d="M21 11.5A8.5 8.5 0 0 1 8.6 19L3 20.5 4.6 15A8.5 8.5 0 1 1 21 11.5z"/><path d="M8.6 9.2c.3 2.5 2.4 4.6 5 5 .8.1 1.5-.5 1.5-1.3l-1.8-.8-.9.9a5.6 5.6 0 0 1-2.6-2.6l.9-.9-.8-1.8c-.8 0-1.4.7-1.3 1.5z"/></svg></span>
         <span><b>WhatsApp</b><span>0693 813 858</span></span>
       </a>
-      <a class="ct rv rv-d4" href="https://www.instagram.com/lepetitbooth" target="_blank" rel="noopener">
+      <a class="ct rv rv-d4" href="https://www.instagram.com/lepetitbooth" target="_blank" rel="noopener" data-cms-contact="instagram">
         <span class="ct-ico"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17" cy="7" r="1.1" fill="currentColor" stroke="none"/></svg></span>
         <span><b>Instagram</b><span>@lepetitbooth</span></span>
       </a>
@@ -1032,6 +1085,12 @@ const CONFIG = {
   // Film d'ambiance du hero (mp4/webm). Laissez vide pour n'afficher que le portail lumineux.
   heroVideo: '',
 
+  // Photo plein écran du hero (placée derrière les particules).
+  // Format conseillé : 2560×1440 px (min. 1920×1080), JPG optimisé.
+  heroPhoto: '',            // URL de l'image, vide = désactivée
+  heroPhotoOpacity: 55,     // 0 à 100 %
+  heroPhotoPos: '50% 50%',  // centrage : gauche/droite % , haut/bas %
+
   // Galerie — remplacez poster/src par vos fichiers.
   gallery: [
     { label: 'Mariage · Saint-Gilles',   poster: '', src: '' },
@@ -1042,6 +1101,157 @@ const CONFIG = {
     { label: 'Soirée privée · Étang-Salé', poster: '', src: '' }
   ]
 };
+
+/* ============================================================
+   HYDRATATION CMS + MESURE D'AUDIENCE
+   Le site lit le contenu publié depuis Supabase et l'applique.
+   Sans Supabase configuré, il garde ses textes par défaut (aucun risque).
+   ============================================================ */
+window.whenCmsReady = (fn) => (window.__cmsReady || Promise.resolve()).then(fn).catch(() => fn());
+
+window.__cmsReady = (async function hydrate(){
+  // Mesure d'audience (n'insère que si Supabase est configuré)
+  const device = (() => {
+    const w = window.innerWidth;
+    if (w < 768) return 'mobile';
+    if (w < 1100) return 'tablet';
+    return 'desktop';
+  })();
+  window.track = async (type) => {
+    if (!CONFIG.supabaseUrl || !CONFIG.supabaseAnonKey) return;
+    try {
+      const c = await getSupabase();
+      if (c) c.from('analytics_events').insert({ type, path: location.pathname, device });
+    } catch (_) {}
+  };
+  // Clic « Réserver » (délégation)
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-track="reserve_click"]')) window.track('reserve_click');
+  });
+
+  if (!CONFIG.supabaseUrl || !CONFIG.supabaseAnonKey) return; // pas de base → défauts
+
+  let content = null, gallery = null, reviews = null;
+  try {
+    const c = await getSupabase();
+    const [ct, g, r] = await Promise.all([
+      c.rpc('get_published_content'),
+      c.from('gallery_items').select('*').eq('visible', true).order('position', { ascending: true }),
+      c.from('reviews').select('*').eq('visible', true).order('position', { ascending: true }),
+    ]);
+    content = ct.data || null;
+    gallery = g.data || null;
+    reviews = r.data || null;
+  } catch (_) { return; }
+
+  window.track('visit');
+  if (content) applyContent(content);
+  if (gallery && gallery.length) {
+    CONFIG.gallery = gallery.map(v => ({ label: [v.title, v.description].filter(Boolean).join(' — ') || v.title || '', poster: v.poster_url || '', src: v.media_url || '' }));
+  }
+  if (reviews && reviews.length) renderReviews(reviews);
+})();
+
+function applyContent(c){
+  const setTxt = (sel, val) => { if (val != null) document.querySelectorAll(sel).forEach(el => el.textContent = val); };
+  // Hero
+  if (c.hero){
+    for (const k of ['titre','sousTitre','claimFort','claim','ctaPrincipal','ctaSecondaire'])
+      setTxt('[data-cms="hero.' + k + '"]', c.hero[k]);
+    if (c.hero.photoUrl){ CONFIG.heroPhoto = c.hero.photoUrl; }
+    if (c.hero.photoOpacite != null) CONFIG.heroPhotoOpacity = c.hero.photoOpacite;
+    if (c.hero.photoPosition) CONFIG.heroPhotoPos = c.hero.photoPosition;
+    // Application immédiate (si l'animation d'ouverture est déjà passée)
+    const ph = document.getElementById('heroPhoto');
+    if (ph && c.hero.photoUrl){
+      ph.style.backgroundImage = 'url("' + c.hero.photoUrl + '")';
+      ph.style.setProperty('--hero-opacity', ((c.hero.photoOpacite ?? 55) / 100).toFixed(2));
+      ph.style.setProperty('--hero-pos', c.hero.photoPosition || '50% 50%');
+      ph.classList.add('on');
+    }
+  }
+  // Compteur
+  if (c.compteur){
+    const sec = document.getElementById('compteur');
+    if (sec){
+      if (c.compteur.nombre != null) sec.dataset.count = c.compteur.nombre;
+      setTxt('#countTxt', c.compteur.texte);
+      sec.style.display = c.compteur.visible === false ? 'none' : '';
+    }
+  }
+  // Sur-mesure
+  const sm = document.querySelector('[data-cms-surmesure]');
+  if (sm && c.surMesure) sm.textContent = c.surMesure;
+  // Formules
+  if (Array.isArray(c.formules)) renderPlans(c.formules);
+  // Thème
+  if (c.theme){
+    const r = document.documentElement.style;
+    if (c.theme.neon) r.setProperty('--neon', c.theme.neon);
+    if (c.theme.magenta) r.setProperty('--magenta', c.theme.magenta);
+    if (c.theme.gold) r.setProperty('--gold', c.theme.gold);
+    if (c.theme.fond) r.setProperty('--void', c.theme.fond);
+  }
+  // Contact
+  if (c.contact){
+    const map = {
+      email: el => { el.href = 'mailto:' + c.contact.email; setLast(el, c.contact.email); },
+      telephone: el => { el.href = 'tel:' + String(c.contact.telephone).replace(/\s/g, ''); setLast(el, c.contact.telephone); },
+      whatsapp: el => { el.href = 'https://wa.me/' + String(c.contact.whatsapp).replace(/\D/g, ''); },
+      instagram: el => { el.href = 'https://www.instagram.com/' + c.contact.instagram; setLast(el, '@' + c.contact.instagram); },
+    };
+    document.querySelectorAll('[data-cms-contact]').forEach(el => {
+      const fn = map[el.dataset.cmsContact]; if (fn && c.contact[el.dataset.cmsContact]) fn(el);
+    });
+  }
+  function setLast(a, val){ const s = a.querySelectorAll('span span'); if (s.length) s[s.length - 1].textContent = val; }
+}
+
+function renderPlans(formules){
+  const grid = document.querySelector('[data-cms-plans]');
+  if (!grid) return;
+  grid.innerHTML = formules.map((f, i) => {
+    const star = f.enAvant ? ' plan--star' : '';
+    const flag = f.enAvant ? '<span class="plan-flag">Recommandé</span>' : '';
+    const lignes = (f.lignes || []).map(l => '<li>' + esc(l) + '</li>').join('');
+    const cls = f.enAvant ? 'btn btn--wide' : 'btn btn--ghost btn--wide';
+    return '<article class="plan' + star + ' rv">' + flag +
+      '<h3>' + esc(f.nom) + '</h3>' +
+      '<p class="plan-tag">' + esc(f.tagline || '') + '</p>' +
+      '<div class="plan-price">' + esc(f.prix) + ' <small>€ TTC</small></div><hr>' +
+      '<ul>' + lignes + '</ul>' +
+      '<button class="' + cls + '" data-plan="' + esc(f.nom) + '">Réserver cette formule</button>' +
+      '</article>';
+  }).join('');
+  grid.querySelectorAll('.rv').forEach(n => n.classList.add('in'));
+}
+
+function renderReviews(list){
+  const grid = document.querySelector('[data-cms-reviews]');
+  if (!grid) return;
+  const initials = r => ((r.prenom || ' ')[0] + (r.nom || ' ')[0]).toUpperCase();
+  const stars = n => { let s = ''; for (let i = 0; i < 5; i++) s += '<svg viewBox="0 0 24 24"><path d="M12 2l3 6.5 7 .9-5 4.9 1.2 7L12 18l-6.2 3.3L7 14.3 2 9.4l7-.9z"/></svg>'; return s; };
+  grid.innerHTML = list.map(r => {
+    const who = '<div class="avis-who">' +
+      (r.photo_url ? '<img class="avatar" style="object-fit:cover" src="' + r.photo_url + '" alt="">' : '<div class="avatar">' + initials(r) + '</div>') +
+      '<div><b>' + esc([r.prenom, r.nom].filter(Boolean).join(' ')) + '</b><span>' + esc(r.lieu || '') + '</span></div></div>';
+    if (r.kind === 'audio'){
+      return '<article class="avis rv"><div class="voice-review">' +
+        '<button class="avis-voice" data-audio="' + esc(r.audio_url || '') + '" aria-label="Écouter le témoignage">' +
+        '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M7 4l13 8-13 8z"/></svg> Écouter le témoignage</button></div>' + who + '</article>';
+    }
+    return '<article class="avis rv"><div class="stars" aria-label="' + (r.note || 5) + ' sur 5">' + stars(r.note) +
+      '</div><blockquote>' + esc(r.texte || '') + '</blockquote>' + who + '</article>';
+  }).join('');
+  grid.querySelectorAll('.rv').forEach(n => n.classList.add('in'));
+  grid.querySelectorAll('.avis-voice').forEach(b => b.addEventListener('click', () => {
+    const url = b.dataset.audio; if (!url) return;
+    if (window.track) window.track('audio_play');
+    const a = new Audio(url); a.play().catch(() => {});
+  }));
+}
+
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m])); }
 
 const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -1168,6 +1378,21 @@ const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       document.querySelectorAll('.hero .rv').forEach(n => n.classList.add('in'));
       const v = document.getElementById('heroVideo');
       if (CONFIG.heroVideo){ v.src = CONFIG.heroVideo; v.load(); v.play().catch(()=>{}); }
+
+      // Photo de fond du hero (sous les particules)
+      const ph = document.getElementById('heroPhoto');
+      if (CONFIG.heroPhoto){
+        ph.style.backgroundImage = 'url("' + CONFIG.heroPhoto + '")';
+        ph.style.setProperty('--hero-opacity', (CONFIG.heroPhotoOpacity / 100).toFixed(2));
+        ph.style.setProperty('--hero-pos', CONFIG.heroPhotoPos);
+        ph.classList.add('on');
+        // La photo ne concerne que le hero : on l'atténue dès qu'on scrolle plus bas.
+        const fade = () => {
+          const t = Math.max(0, 1 - window.scrollY / (window.innerHeight * 0.9));
+          ph.style.opacity = (t * (CONFIG.heroPhotoOpacity / 100)).toFixed(3);
+        };
+        window.addEventListener('scroll', fade, { passive: true }); fade();
+      }
     }, 700);
   };
   document.body.classList.add('is-locked');
@@ -1221,7 +1446,7 @@ const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 /* ============================================================
    6. Galerie orbitale — rappelle le bras du booth 360
    ============================================================ */
-(function orbit(){
+function initGallery(){
   const wrap = document.getElementById('orbitWrap');
   const stage = document.getElementById('orbit');
   const rail = document.getElementById('rail');
@@ -1286,6 +1511,7 @@ const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const lbm = document.getElementById('lbMedia');
   const open = i => {
     const it = items[i];
+    if (window.track) window.track('video_play');
     lbm.innerHTML = it.src
       ? '<video src="' + it.src + '" controls autoplay playsinline poster="' + (it.poster || '') + '"></video>'
       : (it.poster
@@ -1303,7 +1529,9 @@ const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   document.getElementById('lbClose').addEventListener('click', close);
   lb.addEventListener('click', e => { if (e.target === lb) close(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && lb.classList.contains('on')) close(); });
-})();
+}
+// La galerie se construit après l'hydratation (données publiées) ou tout de suite sans Supabase.
+whenCmsReady(initGallery);
 
 /* ============================================================
    7. Supabase (chargé à la demande, sans bloquer la page)
@@ -1392,12 +1620,15 @@ const Calendar = (function(){
   const note = document.getElementById('formNote');
   const done = document.getElementById('done');
 
-  // « Réserver cette formule » pré-remplit la formule choisie.
-  document.querySelectorAll('[data-plan]').forEach(b => b.addEventListener('click', () => {
+  // « Réserver cette formule » pré-remplit la formule choisie (délégation :
+  // fonctionne aussi pour les cartes reconstruites par l'hydratation CMS).
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-plan]');
+    if (!b) return;
     document.getElementById('formuleSelect').value = b.dataset.plan;
     document.getElementById('reservation').scrollIntoView({ behavior: REDUCED ? 'auto' : 'smooth' });
     setTimeout(() => f.querySelector('[name=prenom]').focus(), 700);
-  }));
+  });
 
   const flag = (el, bad) => el.closest('.field, .consent')?.classList.toggle('err', bad);
 
@@ -1422,7 +1653,7 @@ const Calendar = (function(){
 
     btn.disabled = true;
     btn.textContent = 'Vérification en cours…';
-    note.textContent = 'Réponse sous 24 h · Sans engagement';
+    note.textContent = 'Réponse rapide · Sans engagement';
 
     const d = Object.fromEntries(new FormData(f).entries());
     const row = {
@@ -1455,6 +1686,30 @@ const Calendar = (function(){
       note.innerHTML = 'L\'envoi n\'a pas abouti. Écrivez-nous à <a href="mailto:' + CONFIG.fallbackEmail + '" style="color:var(--neon)">' + CONFIG.fallbackEmail + '</a> ou par WhatsApp au 0693 813 858.';
     }
   });
+})();
+
+/* ---------- Compteur animé (déclenché à l'apparition) ---------- */
+(function counter(){
+  const sec = document.getElementById('compteur');
+  if (!sec) return;
+  const out = document.getElementById('countVal');
+  const target = parseInt(sec.dataset.count, 10) || 0;
+  let done = false;
+  const run = () => {
+    if (done) return; done = true;
+    if (REDUCED){ out.textContent = target; return; }
+    const dur = 1600, t0 = performance.now();
+    const tick = now => {
+      const p = Math.min(1, (now - t0) / dur);
+      const eased = 1 - Math.pow(1 - p, 3);
+      out.textContent = Math.round(target * eased);
+      if (p < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  };
+  new IntersectionObserver((e, o) => {
+    if (e[0].isIntersecting){ run(); o.disconnect(); }
+  }, { threshold: 0.5 }).observe(sec);
 })();
 
 document.getElementById('year').textContent = new Date().getFullYear();
