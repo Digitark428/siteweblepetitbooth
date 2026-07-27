@@ -1122,10 +1122,39 @@ const CONFIG = {
    Le site lit le contenu publié depuis Supabase et l'applique.
    Sans Supabase configuré, il garde ses textes par défaut (aucun risque).
    ============================================================ */
+/* Client Supabase — DOIT être défini avant l'hydratation qui l'utilise. */
+var __sb = null;
+async function getSupabase(){
+  if (__sb) return __sb;
+  if (!CONFIG.supabaseUrl || !CONFIG.supabaseAnonKey) return null;
+  const m = await import('https://esm.sh/@supabase/supabase-js@2');
+  __sb = m.createClient(CONFIG.supabaseUrl, CONFIG.supabaseAnonKey);
+  return __sb;
+}
+
+/* Journal de diagnostic visible dans la console du navigateur (F12). */
+const CMS_LOG = [];
+function cmsLog(msg, extra){
+  CMS_LOG.push(msg);
+  console.log('%c[CMS] ' + msg, 'color:#C77DFF', extra !== undefined ? extra : '');
+}
+window.cmsDiagnostic = () => {
+  console.log('%c=== DIAGNOSTIC LE PETIT BOOTH ===', 'color:#FF4D8D;font-weight:bold');
+  console.log('Supabase configuré :', Boolean(CONFIG.supabaseUrl && CONFIG.supabaseAnonKey));
+  CMS_LOG.forEach(l => console.log(' · ' + l));
+  return 'Copiez tout ce qui est affiché ci-dessus.';
+};
+
 window.whenCmsReady = (fn) => (window.__cmsReady || Promise.resolve()).then(fn).catch(() => fn());
 
-window.__cmsReady = (async function hydrate(){
-  // Mesure d'audience (n'insère que si Supabase est configuré)
+/* Démarrage différé : garantit que TOUT le script est évalué avant
+   d'utiliser ses fonctions et constantes (corrige l'échec silencieux). */
+window.__cmsReady = new Promise((resolve) => {
+  setTimeout(() => { hydrate().then(resolve).catch((e) => { cmsLog('Échec de l\'hydratation', e); resolve(); }); }, 0);
+});
+
+async function hydrate(){
+  // Mesure d'audience
   const device = (() => {
     const w = window.innerWidth;
     if (w < 768) return 'mobile';
@@ -1133,39 +1162,67 @@ window.__cmsReady = (async function hydrate(){
     return 'desktop';
   })();
   window.track = async (type) => {
-    if (!CONFIG.supabaseUrl || !CONFIG.supabaseAnonKey) return;
     try {
       const c = await getSupabase();
       if (c) c.from('analytics_events').insert({ type, path: location.pathname, device });
     } catch (_) {}
   };
-  // Clic « Réserver » (délégation)
   document.addEventListener('click', (e) => {
     if (e.target.closest('[data-track="reserve_click"]')) window.track('reserve_click');
   });
 
-  if (!CONFIG.supabaseUrl || !CONFIG.supabaseAnonKey) return; // pas de base → défauts
+  if (!CONFIG.supabaseUrl || !CONFIG.supabaseAnonKey){
+    cmsLog('Aucune clé Supabase dans CONFIG → le site affiche ses textes par défaut.');
+    return;
+  }
 
-  let content = null, gallery = null, reviews = null;
+  let c;
   try {
-    const c = await getSupabase();
-    const [ct, g, r] = await Promise.all([
-      c.rpc('get_published_content'),
-      c.from('gallery_items').select('*').eq('visible', true).order('position', { ascending: true }),
-      c.from('reviews').select('*').eq('visible', true).order('position', { ascending: true }),
-    ]);
-    content = ct.data || null;
-    gallery = g.data || null;
-    reviews = r.data || null;
-  } catch (_) { return; }
+    c = await getSupabase();
+  } catch (e) {
+    cmsLog('Impossible de charger la librairie Supabase (réseau ?)', e);
+    return;
+  }
+  if (!c){ cmsLog('Client Supabase non créé.'); return; }
+
+  const [ct, g, r] = await Promise.all([
+    c.rpc('get_published_content'),
+    c.from('gallery_items').select('*').eq('visible', true).order('position', { ascending: true }),
+    c.from('reviews').select('*').eq('visible', true).order('position', { ascending: true }),
+  ]);
+
+  if (ct.error) cmsLog('Erreur lecture du contenu publié', ct.error.message);
+  if (g.error)  cmsLog('Erreur lecture de la galerie', g.error.message);
+  if (r.error)  cmsLog('Erreur lecture des avis', r.error.message);
+
+  const content = ct.data || null;
+  const gallery = g.data || null;
+  const reviews = r.data || null;
 
   window.track('visit');
-  if (content) applyContent(content);
-  if (gallery && gallery.length) {
-    CONFIG.gallery = gallery.map(v => ({ label: [v.title, v.description].filter(Boolean).join(' — ') || v.title || '', poster: v.poster_url || '', src: v.media_url || '' }));
+
+  if (content && Object.keys(content).length){
+    applyContent(content);
+    cmsLog('Contenu publié appliqué.', Object.keys(content).join(', '));
+  } else {
+    cmsLog('Contenu publié VIDE → cliquez sur « Enregistrer » dans l\'administration.');
   }
-  if (reviews && reviews.length) renderReviews(reviews);
-})();
+
+  if (gallery && gallery.length){
+    CONFIG.gallery = gallery.map(v => ({
+      label: [v.title, v.description].filter(Boolean).join(' — ') || v.title || '',
+      poster: v.poster_url || '', src: v.media_url || ''
+    }));
+    cmsLog('Galerie chargée : ' + gallery.length + ' vidéo(s).');
+  } else {
+    cmsLog('Galerie vide côté base (aucune vidéo visible).');
+  }
+
+  if (reviews && reviews.length){
+    renderReviews(reviews);
+    cmsLog('Avis chargés : ' + reviews.length + '.');
+  }
+}
 
 function applyContent(c){
   const setTxt = (sel, val) => { if (val != null) document.querySelectorAll(sel).forEach(el => el.textContent = val); };
@@ -1610,17 +1667,8 @@ function initGallery(){
 whenCmsReady(initGallery);
 
 /* ============================================================
-   7. Supabase (chargé à la demande, sans bloquer la page)
-   ============================================================ */
-let sb = null;
-async function getSupabase(){
-  if (sb || !CONFIG.supabaseUrl || !CONFIG.supabaseAnonKey) return sb;
-  const m = await import('https://esm.sh/@supabase/supabase-js@2');
-  sb = m.createClient(CONFIG.supabaseUrl, CONFIG.supabaseAnonKey);
-  return sb;
-}
-
-/* ============================================================
+   7. (Le client Supabase est défini en haut du script, avant
+      l'hydratation qui en dépend.)
    8. Calendrier des dates déjà réservées
    ============================================================ */
 const Calendar = (function(){

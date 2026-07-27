@@ -42,7 +42,8 @@ export default function MusicView() {
         </p>
       </Card>
 
-      {pick && <MediaPicker kind="audio" onClose={() => setPick(false)} onPick={a => { set("musique.url", a.url); setPick(false); }} />}
+      {pick && <MediaPicker kind="audio" onClose={() => setPick(false)}
+        onPick={a => { set("musique.url", a.url); set("musique.actif", true); setPick(false); }} />}
     <SaveBar />
     </div>
   );
