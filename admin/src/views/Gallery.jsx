@@ -148,8 +148,11 @@ function GalleryEditor({ item, onSave, onClose }) {
             onChange={e => setF({ ...f, media_url: e.target.value })} />
         </div>
         <p style={{ fontSize: ".74rem", color: "var(--mute)", margin: 0, lineHeight: 1.6 }}>
-          Les vidéos s'affichent en <b style={{ color: "var(--mist)" }}>format vertical 9:16</b>. Filmez ou exportez au format
-          portrait pour un rendu optimal. Sans vignette, l'aperçu se génère automatiquement (1ʳᵉ image du fichier ou miniature YouTube).
+          Les vidéos s'affichent en <b style={{ color: "var(--mist)" }}>format vertical 9:16</b> (portrait). Filmez ou exportez en portrait
+          pour un rendu optimal. Sans vignette, l'aperçu se génère automatiquement (1ʳᵉ image du fichier ou miniature YouTube).<br />
+          <b style={{ color: "var(--mist)" }}>Format conseillé :</b> MP4 (.mp4). ·
+          <b style={{ color: "var(--mist)" }}> Résolution idéale :</b> 1080 × 1920 px. ·
+          <b style={{ color: "var(--mist)" }}> Taille maximale :</b> 50 Mo par vidéo importée. Au-delà, utilisez un <b style={{ color: "var(--mist)" }}>lien YouTube</b> (aucune limite).
         </p>
         <label className="switch">
           <input type="checkbox" checked={f.visible} onChange={e => setF({ ...f, visible: e.target.checked })} />
