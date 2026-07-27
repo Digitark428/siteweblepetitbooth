@@ -130,8 +130,8 @@ function GalleryEditor({ item, onSave, onClose }) {
         </div>
         <div className="grid2">
           <div>
-            <span className="field-lbl">Vidéo</span>
-            {f.media_url
+            <span className="field-lbl">Vidéo (fichier importé)</span>
+            {f.media_url && !/youtu/.test(f.media_url)
               ? <video src={f.media_url} className="thumb" style={{ width: "100%", height: 120 }} muted onClick={() => setPicker("media")} />
               : <div className="thumb thumb--pick" style={{ width: "100%", height: 120 }} onClick={() => setPicker("media")}><Film size={20} /></div>}
           </div>
@@ -142,6 +142,15 @@ function GalleryEditor({ item, onSave, onClose }) {
               : <div className="thumb thumb--pick" style={{ width: "100%", height: 120 }} onClick={() => setPicker("poster")}><ImageIcon size={20} /></div>}
           </div>
         </div>
+        <div>
+          <span className="field-lbl">…ou lien YouTube (au lieu d'un fichier)</span>
+          <input className="inp" value={/youtu/.test(f.media_url) ? f.media_url : ""} placeholder="https://youtu.be/…"
+            onChange={e => setF({ ...f, media_url: e.target.value })} />
+        </div>
+        <p style={{ fontSize: ".74rem", color: "var(--mute)", margin: 0, lineHeight: 1.6 }}>
+          Les vidéos s'affichent en <b style={{ color: "var(--mist)" }}>format vertical 9:16</b>. Filmez ou exportez au format
+          portrait pour un rendu optimal. Sans vignette, l'aperçu se génère automatiquement (1ʳᵉ image du fichier ou miniature YouTube).
+        </p>
         <label className="switch">
           <input type="checkbox" checked={f.visible} onChange={e => setF({ ...f, visible: e.target.checked })} />
           Visible sur le site

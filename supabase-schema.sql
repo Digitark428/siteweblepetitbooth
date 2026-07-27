@@ -220,3 +220,18 @@ create policy medias_admin_write on storage.objects
 --      déverrouille l'administration. Changez le mot de passe quand vous voulez.
 --   2. Renseignez CONFIG.supabaseUrl / supabaseAnonKey dans le site.
 -- ============================================================
+
+-- ============================================================
+-- GALERIE PHOTO (ajout)
+-- ============================================================
+create table if not exists public.photos (
+  id uuid primary key default gen_random_uuid(),
+  url text not null, legende text,
+  position int not null default 0, visible boolean not null default true,
+  created_at timestamptz not null default now()
+);
+alter table public.photos enable row level security;
+drop policy if exists pub_read_photos on public.photos;
+create policy pub_read_photos on public.photos for select to anon using (visible);
+drop policy if exists admin_all_photos on public.photos;
+create policy admin_all_photos on public.photos for all to authenticated using (true) with check (true);

@@ -7,6 +7,7 @@ import Dashboard from "./views/Dashboard.jsx";
 import Reservations from "./views/Reservations.jsx";
 import Calendar from "./views/Calendar.jsx";
 import Gallery from "./views/Gallery.jsx";
+import Photos from "./views/Photos.jsx";
 import Reviews from "./views/Reviews.jsx";
 import Media from "./views/Media.jsx";
 import HomeEditor from "./views/HomeEditor.jsx";
@@ -43,6 +44,7 @@ export default function App() {
   const [reservations, setReservations] = useState(null);
   const [calendar, setCalendar] = useState(null);
   const [gallery, setGallery] = useState(null);
+  const [photos, setPhotos] = useState(null);
   const [reviews, setReviews] = useState(null);
 
   const load = useCallback(async () => {
@@ -51,18 +53,21 @@ export default function App() {
       setCalendar(DEMO_CAL);
       setGallery(DEMO_GALLERY);
       setReviews(DEMO_REVIEWS);
+      setPhotos([]);
       return;
     }
-    const [r, c, g, a] = await Promise.all([
+    const [r, c, g, a, ph] = await Promise.all([
       supabase.from("reservations").select("*").order("created_at", { ascending: false }),
       supabase.from("calendar_events").select("*").order("date_evenement", { ascending: true }),
       supabase.from("gallery_items").select("*").order("position", { ascending: true }),
       supabase.from("reviews").select("*").order("position", { ascending: true }),
+      supabase.from("photos").select("*").order("position", { ascending: true }),
     ]);
     setReservations(r.error ? [] : r.data);
     setCalendar(c.error ? [] : c.data);
     setGallery(g.error ? [] : g.data);
     setReviews(a.error ? [] : a.data);
+    setPhotos(ph.error ? [] : ph.data);
   }, []);
 
   useEffect(() => { if (session) load(); }, [session, load]);
@@ -78,6 +83,7 @@ export default function App() {
       {view === "reservations" && <Reservations items={reservations} reload={load} setItems={setReservations} />}
       {view === "calendrier" && <Calendar items={calendar} reload={load} setItems={setCalendar} />}
       {view === "galerie" && <Gallery items={gallery} setItems={setGallery} />}
+      {view === "photos" && <Photos items={photos} setItems={setPhotos} />}
       {view === "avis" && <Reviews items={reviews} setItems={setReviews} />}
       {view === "medias" && <Media />}
       {view === "accueil" && <HomeEditor />}
