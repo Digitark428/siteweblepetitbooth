@@ -81,6 +81,13 @@ export default function App() {
     <Shell view={view} setView={setView} nbNouvelles={nbNouvelles}>
       {view === "dashboard" && <Dashboard reservations={reservations} calendar={calendar} />}
       {view === "reservations" && <Reservations items={reservations} reload={load} setItems={setReservations} />}
+      {view === "crm" && (
+        <iframe
+          src="crm.html"
+          title="CRM — Clients & prestataires"
+          className="crm-frame"
+        />
+      )}
       {view === "calendrier" && <Calendar items={calendar} reload={load} setItems={setCalendar} />}
       {view === "galerie" && <Gallery items={gallery} setItems={setGallery} />}
       {view === "photos" && <Photos items={photos} setItems={setPhotos} />}

@@ -2,7 +2,7 @@ import React from "react";
 import {
   Camera, LayoutDashboard, Home, Images, Star, Layers, Calendar as CalIcon,
   Inbox, FolderOpen, Music, Settings, BarChart3, LogOut, Eye, CircleDot, Bell,
-  Undo2, UploadCloud, Check, ArrowLeft, Image as ImageIcon
+  Undo2, UploadCloud, Check, ArrowLeft, Image as ImageIcon, Briefcase
 } from "lucide-react";
 import { useAuth } from "../lib/auth.jsx";
 import { useContent } from "../lib/content.jsx";
@@ -16,6 +16,7 @@ export const NAV = [
   { id: "formules", label: "Formules", icon: Layers },
   { id: "calendrier", label: "Calendrier", icon: CalIcon },
   { id: "reservations", label: "Réservations", icon: Inbox },
+  { id: "crm", label: "CRM — Clients & prestataires", icon: Briefcase },
   { id: "medias", label: "Médias", icon: FolderOpen },
   { id: "musique", label: "Musique", icon: Music },
   { id: "parametres", label: "Paramètres", icon: Settings },

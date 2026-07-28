@@ -229,3 +229,15 @@ a{color:inherit}
 .savebar-msg .ko{color:var(--magenta);display:inline-flex;align-items:center;gap:7px}
 .savebar-msg .pending{color:var(--gold)}
 .savebar-msg .clean{color:var(--mute)}
+
+/* ============ CRM intégré (iframe pleine page) ============ */
+.crm-frame{
+  width:100%;
+  height:calc(100vh - 132px);
+  min-height:560px;
+  border:1px solid var(--edge);
+  border-radius:16px;
+  background:#0B0416;
+  display:block;
+}
+@media (max-width:900px){ .crm-frame{ height:calc(100vh - 120px); border-radius:12px; } }
