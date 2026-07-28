@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useAuth } from "./lib/auth.jsx";
 import { supabase, hasSupabase } from "./lib/supabase.js";
 import Login from "./components/Login.jsx";
@@ -15,6 +15,7 @@ import Formulas from "./views/Formulas.jsx";
 import MusicView from "./views/MusicView.jsx";
 import Settings from "./views/Settings.jsx";
 import Soon from "./views/Soon.jsx";
+import CrmFrame from "./views/CrmFrame.jsx";
 
 /* Données de démonstration (utilisées si aucune base n'est connectée) */
 const DEMO_RES = [
@@ -81,13 +82,7 @@ export default function App() {
     <Shell view={view} setView={setView} nbNouvelles={nbNouvelles}>
       {view === "dashboard" && <Dashboard reservations={reservations} calendar={calendar} />}
       {view === "reservations" && <Reservations items={reservations} reload={load} setItems={setReservations} />}
-      {view === "crm" && (
-        <iframe
-          src="crm.html"
-          title="CRM — Clients & prestataires"
-          className="crm-frame"
-        />
-      )}
+      {view === "crm" && <CrmFrame />}
       {view === "calendrier" && <Calendar items={calendar} reload={load} setItems={setCalendar} />}
       {view === "galerie" && <Gallery items={gallery} setItems={setGallery} />}
       {view === "photos" && <Photos items={photos} setItems={setPhotos} />}

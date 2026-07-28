@@ -596,6 +596,7 @@ function logout(){ state.user=null; state.adminPw=null; state.route='dashboard';
   const u=$('#admin-user'); if(u)u.value=''; $('#admin-pass').value=''; $('#admin-err').textContent=''; refreshDbBadge();
 }
 function enterApp(){
+  const cc=document.getElementById('crm-connecting'); if(cc)cc.style.display='none';
   $('#public').innerHTML=''; $('#public').style.display='none';
   $('#login').style.display='none'; $('#app').style.display='block';
   $('#side-who').textContent=state.user.name;
@@ -1361,7 +1362,20 @@ async function route(){
   if(state.user){ enterApp(); return; }
   // Connexion automatique : on réutilise la session ouverte dans l'administration
   const auto = await autoLoginFromSession();
-  if(!auto){ $('#app').style.display='none'; $('#login').style.display='flex'; refreshDbBadge(); }
+  if(!auto){
+    // On laisse un court instant à l'administration pour transmettre la session
+    // (via postMessage) avant d'afficher le formulaire de connexion.
+    $('#app').style.display='none'; $('#login').style.display='none';
+    let cc=document.getElementById('crm-connecting');
+    if(!cc){
+      cc=document.createElement('div'); cc.id='crm-connecting';
+      cc.style.cssText='min-height:100vh;display:flex;align-items:center;justify-content:center;color:var(--muted);font-family:Sora,sans-serif;font-size:14px;letter-spacing:.04em';
+      cc.textContent='Connexion à l\'administration…';
+      document.body.appendChild(cc);
+    }
+    cc.style.display='flex';
+    setTimeout(()=>{ if(!state.user){ cc.style.display='none'; $('#login').style.display='flex'; refreshDbBadge(); } }, 2500);
+  }
 }
 
 async function autoLoginFromSession(){
@@ -1404,6 +1418,23 @@ async function init(){
   refreshDbBadge();
 }
 window.addEventListener('hashchange', route);
+
+/* Réception de la session admin (transmise par la page d'administration
+   qui contient le CRM). Aucune supposition sur le stockage : l'admin nous
+   envoie directement les jetons, on ouvre la session, on entre. */
+window.addEventListener('message', async (e)=>{
+  if(e.origin !== location.origin) return;
+  const d = e.data || {};
+  if(d.type === 'lpb-session' && d.access_token && supa){
+    try{
+      await supa.auth.setSession({ access_token: d.access_token, refresh_token: d.refresh_token });
+    }catch(_){}
+    if(!state.user){ await autoLoginFromSession(); }
+  }
+});
+// Signale à l'admin qu'on est prêt à recevoir la session.
+try{ if(window.parent && window.parent !== window) window.parent.postMessage({ type:'lpb-crm-ready' }, location.origin); }catch(_){}
+
 init();
 
 /* public api */
