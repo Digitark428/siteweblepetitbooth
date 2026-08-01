@@ -456,18 +456,19 @@ async function fetchPrestPublic(token){ if(!supa)return undefined; const {data,e
 
 /* ---------- catalogue marque ---------- */
 const FORMULES = {
-  essentiel:{nom:'Essentiel', prix:290, desc:"L'essentiel pour capturer vos premiers souvenirs"},
-  experience:{nom:'Expérience', prix:490, desc:"L'expérience complète qui marque vos invités"},
-  signature:{nom:'Signature', prix:990, desc:"L'expérience VIP sans limites"}
+  essentiel:{nom:'Essentiel', prix:390, desc:"L'essentiel pour capturer vos premiers souvenirs"},
+  experience:{nom:'Expérience', prix:590, desc:"L'expérience complète qui marque vos invités"},
+  signature:{nom:'Signature', prix:990, desc:"L'expérience VIP sans limites"},
+  perso:{nom:'Prestation personnalisée', prix:0, desc:"Nom et prix libres"}
 };
 const EVENT_TYPES=['Mariage','Entreprise','Anniversaire','Séminaire','Soirée privée','Autre'];
 const STAGES=[
-  {id:'demande',  label:'Demande reçue',        cal:'--c-demande', ccol:'#b15cff'},
-  {id:'devis',    label:'Devis envoyé',         cal:'--c-devis',   ccol:'#f5c542'},
-  {id:'attente',  label:'En attente de réponse',cal:'--c-attente', ccol:'#4d9dff'},
-  {id:'acompte',  label:'Acompte reçu',         cal:'--c-acompte', ccol:'#2dd4bf'},
-  {id:'confirme', label:'Événement confirmé',   cal:'--c-confirme',ccol:'#3ecf8e'},
-  {id:'termine',  label:'Prestation terminée',  cal:'--c-termine', ccol:'#8d8aa6'}
+  {id:'demande',  label:'Demande reçue',                cal:'--c-demande', ccol:'#C77DFF'},
+  {id:'devis',    label:'Devis envoyé',                 cal:'--c-devis',   ccol:'#f5c542'},
+  {id:'attente',  label:'En attente de réponse',        cal:'--c-attente', ccol:'#4d9dff'},
+  {id:'acompte',  label:'Date bloquée – acompte reçu',  cal:'--c-acompte', ccol:'#2dd4bf'},
+  {id:'solde',    label:'Date bloquée – solde reçu',    cal:'--c-confirme',ccol:'#3ecf8e'},
+  {id:'termine',  label:'Prestation terminée',          cal:'--c-termine', ccol:'#8d8aa6'}
 ];
 const stageOf=id=>STAGES.find(s=>s.id===id)||STAGES[0];
 const DEFAULT_TMPL={
@@ -532,6 +533,7 @@ const ic=(p,w=19)=>`<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="no
 const optionsTotal=c=>(c.options||[]).reduce((s,o)=>s+Number(o.prix||0),0);
 const grandTotal=c=>Number(c.montant||0)+optionsTotal(c);
 /* ---------- acompte ---------- */
+const formuleLabel=c=>(c.formule==='perso' ? (c.formuleNom||'Prestation personnalisée') : (FORMULES[c.formule]?.nom||'—'));
 const acompteAmt=c=>Math.round(grandTotal(c)*(Number(c.acomptePct)||0)/100);
 const resteAmt=c=>grandTotal(c)-acompteAmt(c);
 /* ---------- affectations prestataires ---------- */
@@ -651,7 +653,7 @@ function topAction(html){$('#top-actions').innerHTML=html;}
 function viewDashboard(){
   const cl=state.clients;
   const devis=cl.filter(c=>['devis','attente'].includes(c.status)).length;
-  const conf=cl.filter(c=>['acompte','confirme'].includes(c.status)).length;
+  const conf=cl.filter(c=>['acompte','solde','confirme'].includes(c.status)).length;
   const term=cl.filter(c=>c.status==='termine').length;
   const t=today();
   const caMois=cl.filter(c=>{const d=parseD(c.datePrestation);return d&&d.getMonth()===t.getMonth()&&d.getFullYear()===t.getFullYear()&&c.status!=='demande';})
@@ -719,7 +721,7 @@ function kard(c,s){
     <div class="knm">${esc(c.prenom)} ${esc(c.nom)}</div>
     <div class="ktype">${esc(c.typeEvenement)}${c.datePrestation?' · '+fmtShort(parseD(c.datePrestation)):''}</div>
     ${c.prestataire?`<div class="kmeta">${ic(I.user,12)} ${esc(prestNamesDisplay(c))}</div>`:''}
-    <div class="kfoot"><span class="kdate">${esc(FORMULES[c.formule]?.nom||'—')}</span>
+    <div class="kfoot"><span class="kdate">${esc(formuleLabel(c))}</span>
       <span class="kamt gtext">${eur(grandTotal(c))}</span></div>
     ${Number(c.acomptePct)>0?`<div style="margin-top:7px;font-size:11px;color:var(--c-acompte);display:flex;align-items:center;gap:5px">
       ${ic(I.euro,12)} Acompte ${c.acomptePct}% · ${eur(acompteAmt(c))} <span style="color:var(--muted2)">· reste ${eur(resteAmt(c))}</span></div>`:''}
@@ -820,7 +822,7 @@ function assignListHtml(){
 }
 function renderModal(){
   const isNew=!state.modalClientId;
-  const c=isNew?{id:'',token:'',prenom:'',nom:'',telephone:'',email:'',typeEvenement:'Mariage',datePrestation:'',heureDebut:'',heureFin:'',adresse:'',lieu:'',formule:'experience',prestataire:'',montant:490,status:'demande',documents:{},notes:'',options:[],assignments:[],acomptePct:0}:Object.assign({},findClient(state.modalClientId));
+  const c=isNew?{id:'',token:'',prenom:'',nom:'',telephone:'',email:'',typeEvenement:'Mariage',datePrestation:'',heureDebut:'',heureFin:'',adresse:'',lieu:'',formule:'experience',prestataire:'',montant:590,status:'demande',documents:{},notes:'',options:[],assignments:[],acomptePct:0}:Object.assign({},findClient(state.modalClientId));
   const s=stageOf(c.status);
   const f=(label,key,type='text',ph='')=>`<div class="field"><label>${label}</label>
     <input id="cf-${key}" type="${type}" value="${esc(c[key])}" placeholder="${ph}"></div>`;
@@ -859,7 +861,10 @@ function renderModal(){
       <div class="block-title">Prestation</div>
       <div class="form-grid">
         <div class="field"><label>Formule choisie</label><select id="cf-formule" onchange="App.onFormule(this.value)">
-          ${opts(Object.entries(FORMULES),c.formule,e=>e[0],e=>e[1].nom+' — '+e[1].prix+' €')}</select></div>
+          ${opts(Object.entries(FORMULES),c.formule,e=>e[0],e=>e[1].nom+(e[1].prix?' — '+e[1].prix+' €':''))}</select></div>
+        <div class="field" id="cf-perso-wrap" style="${c.formule==='perso'?'':'display:none'}">
+          <label>Nom de la prestation</label>
+          <input id="cf-formuleNom" value="${esc(c.formuleNom||'')}" placeholder="ex. Booth 360 + borne photo"></div>
         <div class="field"><label>Montant formule (€)</label><input id="cf-montant" type="number" value="${esc(c.montant)}" oninput="App.recalcTotal()"></div>
         <div class="field"><label>Étape du pipeline</label><select id="cf-status">${opts(STAGES,c.status,x=>x.id,x=>x.label)}</select></div>
         <div class="field"><label>Acompte (%)</label><input id="cf-acomptePct" type="number" min="0" max="100" value="${esc(c.acomptePct||0)}" placeholder="ex. 30" oninput="App.recalcTotal()"></div>
@@ -878,6 +883,16 @@ function renderModal(){
       <div id="opt-list">${optListHtml()}</div>
       <button class="btn ghost sm" onclick="App.optAdd()" style="margin-top:2px">${ic(I.plus,15)} Ajouter une option</button>
       <div id="opt-total" style="margin-top:14px;padding:12px 14px;background:rgba(12,7,22,.45);border:1px solid var(--border);border-radius:11px;font-size:13px;color:var(--muted)"></div>
+
+      <div class="block-title">Musiques choisies par le client</div>
+      ${(() => {
+        const m = Array.isArray(c.musiques) ? c.musiques.filter(x => x && (x.titre || x.artiste)) : [];
+        if (!m.length) return `<div class="empty" style="margin-bottom:4px">Aucune musique renseignée. Le client peut les saisir depuis son espace personnel (lien privé ci-dessous).</div>`;
+        return `<div style="display:flex;flex-direction:column;gap:8px">` + m.map((x, i) => `
+          <div class="docrow"><div class="di">${ic(I.music || I.doc, 17)}</div>
+            <div><div class="dn">${esc(x.titre || '—')}</div><div class="ds">${esc(x.artiste || '')}</div></div>
+          </div>`).join('') + `</div>`;
+      })()}
 
       <div class="block-title">Documents</div>
       ${docRow('devis','Devis (PDF)')}${docRow('factureAcompte','Facture acompte (PDF)')}${docRow('factureSolde','Facture solde (PDF)')}
@@ -903,7 +918,13 @@ function renderModal(){
   $('#modal-root').innerHTML=html;
   recalcTotal();
 }
-function onFormule(v){ const m=$('#cf-montant'); if(m && FORMULES[v]) m.value=FORMULES[v].prix; recalcTotal(); }
+function onFormule(v){
+  const m=$('#cf-montant'); const w=$('#cf-perso-wrap');
+  if(w) w.style.display = (v==='perso') ? '' : 'none';
+  // Prestation personnalisée : on laisse le prix libre (pas d'écrasement)
+  if(m && FORMULES[v] && v!=='perso') m.value=FORMULES[v].prix;
+  recalcTotal();
+}
 /* ---- total + acompte en direct ---- */
 function recalcTotal(){
   const base=Number(($('#cf-montant')?.value)||0);
@@ -940,7 +961,7 @@ function getForm(){
   const g=k=>($('#cf-'+k)?.value??'');
   return {prenom:g('prenom'),nom:g('nom'),telephone:g('telephone'),email:g('email'),
     typeEvenement:g('typeEvenement'),datePrestation:g('datePrestation'),heureDebut:g('heureDebut'),heureFin:g('heureFin'),
-    adresse:g('adresse'),lieu:g('lieu'),formule:g('formule'),
+    adresse:g('adresse'),lieu:g('lieu'),formule:g('formule'),formuleNom:g('formuleNom'),
     montant:Number(g('montant')||0),status:g('status'),notes:g('notes'),
     acomptePct:Math.max(0,Math.min(100,Number(g('acomptePct')||0)))};
 }
@@ -1064,7 +1085,7 @@ function calDay(){
       <div><div class="nm">${esc(c.prenom)} ${esc(c.nom)} — ${esc(c.typeEvenement)}</div>
         <div class="me">${esc(c.lieu||'Lieu à définir')} · ${esc(c.prestataire||'Non assigné')}</div></div>
       <div class="rt"><div class="d">${esc(c.heureDebut||'—')}${c.heureFin?' – '+esc(c.heureFin):''}</div>
-        <div class="h">${esc(FORMULES[c.formule]?.nom||'')}</div></div>
+        <div class="h">${esc(formuleLabel(c))}</div></div>
     </div>`;}).join('');
 }
 function calYear(){
@@ -1254,6 +1275,44 @@ function optionsBlock(c,forWho){
   </div>`;
 }
 
+/* ---------- Musiques du client (jusqu'à 4) ---------- */
+function musiquesBlock(c){
+  const m = Array.isArray(c.musiques) ? c.musiques : [];
+  const row = i => {
+    const t = (m[i]&&m[i].titre)||'', a=(m[i]&&m[i].artiste)||'';
+    return `<div class="form-grid" style="margin-bottom:10px">
+      <div class="field"><label>Titre ${i+1}</label><input id="mz-t${i}" value="${esc(t)}" placeholder="ex. Ne me quitte pas"></div>
+      <div class="field"><label>Artiste ${i+1}</label><input id="mz-a${i}" value="${esc(a)}" placeholder="ex. Jacques Brel"></div>
+    </div>`;
+  };
+  return `<div class="card" style="padding:22px;margin-bottom:18px">
+    <div class="sec-title">Mes musiques</div>
+    <p style="color:var(--muted);font-size:13px;line-height:1.6;margin:0 0 16px">
+      Indiquez jusqu'à 4 morceaux que vous aimeriez entendre pendant votre événement.
+      Vous pouvez revenir les modifier à tout moment.</p>
+    ${[0,1,2,3].map(row).join('')}
+    <button class="btn neon" onclick="App.saveMusiques('${esc(c.token)}')">Enregistrer mes musiques</button>
+    <span id="mz-msg" style="margin-left:12px;font-size:13px;color:var(--c-confirme)"></span>
+  </div>`;
+}
+
+async function saveMusiques(token){
+  const msg=$('#mz-msg'); if(msg) msg.textContent='Enregistrement…';
+  const list=[];
+  for(let i=0;i<4;i++){
+    const t=($('#mz-t'+i)?.value||'').trim(), a=($('#mz-a'+i)?.value||'').trim();
+    if(t||a) list.push({titre:t, artiste:a});
+  }
+  try{
+    if(!supa) throw new Error('hors ligne');
+    const {error}=await supa.rpc('client_save_musiques',{p_token:token, p_musiques:list});
+    if(error) throw error;
+    if(msg) msg.textContent='✅ Vos musiques sont enregistrées.';
+  }catch(e){
+    if(msg){ msg.style.color='#ff8585'; msg.textContent="Enregistrement impossible : "+(e.message||'erreur'); }
+  }
+}
+
 function renderClientPublic(c){
   const F=FORMULES[c.formule]||{};
   const tile=(icon,label,val)=>`<div class="info-tile card"><div class="il">${ic(icon,15)} ${label}</div><div class="iv">${val}</div></div>`;
@@ -1269,17 +1328,18 @@ function renderClientPublic(c){
       ${tile(I.cal,'Date',c.datePrestation?fmtD(parseD(c.datePrestation)):'À confirmer')}
       ${tile(I.clock,'Horaires',(c.heureDebut||'—')+(c.heureFin?' – '+c.heureFin:''))}
       ${tile(I.pin,'Lieu',esc(c.lieu||c.adresse||'À confirmer'))}
-      ${tile(I.ticket,'Formule',esc(F.nom||'—'))}
+      ${tile(I.ticket,'Formule',esc(formuleLabel(c)))}
       ${tile(I.user, assignmentsOf(c).length>1?'Vos prestataires':'Votre prestataire', esc(prestNamesDisplay(c)||'En cours d\'attribution'))}
       ${tile(I.euro,'Montant total',eur(grandTotal(c)))}
       ${Number(c.acomptePct)>0?tile(I.euro,'Acompte ('+c.acomptePct+'%)',eur(acompteAmt(c))):''}
       ${Number(c.acomptePct)>0?tile(I.euro,'Reste à régler',eur(resteAmt(c))):''}
     </div>
     ${F.desc?`<div class="card" style="padding:20px;margin-bottom:18px;text-align:center;color:var(--muted)">
-      <b class="gold" style="font-family:'Sora';font-size:16px">${esc(F.nom)}</b><br>${esc(F.desc)}</div>`:''}
+      <b class="gold" style="font-family:'Sora';font-size:16px">${esc(formuleLabel(c))}</b><br>${esc(F.desc)}</div>`:''}
     ${optionsBlock(c,'client')}
     ${c.notes?`<div class="card" style="padding:20px;margin-bottom:18px"><div class="sec-title">Remarques</div>
       <div style="color:var(--muted);white-space:pre-wrap;line-height:1.5">${esc(c.notes)}</div></div>`:''}
+    ${musiquesBlock(c)}
     <div class="card" style="padding:22px">
       <div class="sec-title">Mes documents</div>
       ${docs.length?docs.map(([k,label])=>{const d=c.documents[k];return `
@@ -1297,7 +1357,7 @@ function renderClientPublic(c){
 function renderPrestatairePublic(p, missionsInput){
   const miss=(missionsInput||[]).filter(c=>c.datePrestation).sort((a,b)=>a.datePrestation.localeCompare(b.datePrestation));
   const up=miss.filter(c=>parseD(c.datePrestation)>=stripTime(today())&&c.status!=='termine');
-  const card=c=>{const s=stageOf(c.status||'confirme');
+  const card=c=>{const s=stageOf(c.status||'demande');
     const rem=Number(c.montant||0);
     return `<div class="card" style="padding:20px;margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
@@ -1445,7 +1505,7 @@ return {doAdminLogin,logout,go,toggleNav,
   openPrest,closePrest,savePrest,deletePrest,
   pipeSearch,listSearch,
   setCalView,calNav,calToday,openMonth,
-  copyLink,openPublic,backToAdmin,pubDownload};
+  copyLink,openPublic,backToAdmin,pubDownload,saveMusiques};
 })();
 </script>
 </body>

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { Plus, Trash2, Pencil, GripVertical, Star, Play, Pause, User, Mic } from "lucide-react";
+import { Plus, Trash2, Pencil, GripVertical, Star, Play, Pause, User, Mic, Link2, Copy, Check } from "lucide-react";
 import Modal from "../components/Modal.jsx";
 import MediaPicker from "../components/MediaPicker.jsx";
 import { supabase, hasSupabase } from "../lib/supabase.js";
@@ -12,6 +12,23 @@ export default function Reviews({ items, setItems }) {
   const [editing, setEditing] = useState(null);
   const dragId = useRef(null);
   const [overId, setOverId] = useState(null);
+  const [invite, setInvite] = useState(null);
+  const [copied, setCopied] = useState(false);
+
+  // Génère un lien d'invitation à déposer un avis (écrit ou vocal)
+  const genLink = async () => {
+    const token = "av" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+    const base = window.location.origin + window.location.pathname.replace(/admin\/?$/, "");
+    const url = base + "avis.html?type=" + (tab === "audio" ? "vocal" : "ecrit") + "&t=" + token;
+    if (hasSupabase) {
+      await supabase.from("review_invites").insert({ token, kind: tab, label: tab === "audio" ? "Avis vocal" : "Avis écrit" });
+    }
+    setInvite(url); setCopied(false);
+  };
+  const copyLink = async () => {
+    try { await navigator.clipboard.writeText(invite); setCopied(true); setTimeout(() => setCopied(false), 2500); }
+    catch (_) { alert("Copie impossible. Sélectionnez le lien à la main."); }
+  };
 
   if (items === null) return <div className="loading">Chargement des avis…</div>;
 
@@ -68,10 +85,31 @@ export default function Reviews({ items, setItems }) {
 
       <div className="toolbar">
         <div style={{ flex: 1, color: "var(--mute)", fontSize: ".84rem" }}>Glissez pour réordonner. Nombre illimité.</div>
+        <button className="btn btn--ghost btn--sm" onClick={genLink}>
+          <Link2 size={14} /> Inviter un client
+        </button>
         <button className="btn btn--sm" onClick={() => setEditing(tab === "text" ? { ...EMPTY_TEXT } : { ...EMPTY_AUDIO })}>
           <Plus size={14} /> Ajouter un avis
         </button>
       </div>
+
+      {invite && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <h3><Link2 size={15} /> Lien à envoyer à votre client</h3>
+          <p style={{ fontSize: ".8rem", color: "var(--mute)", margin: "0 0 12px", lineHeight: 1.6 }}>
+            Envoyez ce lien par SMS, WhatsApp ou e-mail. Le client remplit le formulaire
+            {tab === "audio" ? " et enregistre son message vocal" : ""} : son avis est publié
+            automatiquement dans la catégorie <b style={{ color: "var(--mist)" }}>{tab === "audio" ? "Avis vocaux" : "Avis écrits"}</b> du site.
+          </p>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <input className="inp" readOnly value={invite} onFocus={e => e.target.select()} style={{ flex: 1, minWidth: 240, fontSize: ".82rem" }} />
+            <button className="btn btn--sm" onClick={copyLink}>
+              {copied ? <><Check size={14} /> Copié</> : <><Copy size={14} /> Copier</>}
+            </button>
+            <button className="btn btn--ghost btn--sm" onClick={() => setInvite(null)}>Fermer</button>
+          </div>
+        </div>
+      )}
 
       {list.length === 0 && <div className="empty">Aucun avis {tab === "text" ? "classique" : "vocal"} pour l'instant.</div>}
 

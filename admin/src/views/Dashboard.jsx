@@ -53,17 +53,38 @@ export default function Dashboard({ reservations, calendar }) {
   const deviceData = devices || DEMO_DEVICES;
 
   const nbNouvelles = (reservations || []).filter(r => r.statut === "nouvelle").length;
-  const upcoming = (calendar || []).filter(e => e.date_evenement >= new Date().toISOString().slice(0, 10)).slice(0, 3);
+  // Date du jour en heure LOCALE (toISOString décale d'un jour à La Réunion)
+  const d0 = new Date();
+  const aujourdhui = d0.getFullYear() + "-" + String(d0.getMonth() + 1).padStart(2, "0") + "-" + String(d0.getDate()).padStart(2, "0");
+  const upcoming = (calendar || []).filter(e => e.date_evenement >= aujourdhui).slice(0, 3);
 
+  // Statistiques réelles (vue stats_overview). Tant qu'aucune visite n'est
+  // enregistrée, les valeurs affichent 0 : c'est normal, pas une panne.
+  const n = (x) => (x == null ? "0" : new Intl.NumberFormat("fr-FR").format(x));
   const stats = [
-    { k: "Visiteurs aujourd'hui", v: overview ? String(overview.visiteurs_jour) : "88", d: "en direct" },
-    { k: "Visiteurs ce mois", v: overview ? String(overview.visiteurs_mois) : "2 341", d: "30 derniers jours" },
-    { k: "Demandes à traiter", v: String(nbNouvelles), d: "réservations nouvelles" },
-    { k: "Clics « Réserver »", v: overview ? String(overview.clics_reserver) : "312", d: "depuis le site" },
+    { k: "Visiteurs aujourd'hui", v: overview ? n(overview.visiteurs_jour) : "—", d: "depuis minuit" },
+    { k: "Visiteurs ce mois", v: overview ? n(overview.visiteurs_mois) : "—", d: "mois en cours" },
+    { k: "Demandes à traiter", v: n(nbNouvelles), d: "réservations nouvelles" },
+    { k: "Clics « Réserver »", v: overview ? n(overview.clics_reserver) : "—", d: "depuis le site" },
+    { k: "Demandes reçues", v: overview ? n(overview.demandes_total) : n((reservations || []).length), d: "au total" },
+    { k: "Taux de conversion", v: overview && overview.taux_conversion != null ? overview.taux_conversion + " %" : "—", d: "demandes / visiteurs" },
+    { k: "Lectures de vidéos", v: overview ? n(overview.lectures_videos) : "—", d: "galerie" },
+    { k: "Écoutes de témoignages", v: overview ? n(overview.ecoutes_audio) : "—", d: "avis vocaux" },
   ];
+
+  const aucuneVisite = overview && Number(overview.visiteurs_total) === 0;
 
   return (
     <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))" }}>
+      {aucuneVisite && (
+        <div className="card" style={{ gridColumn: "1 / -1", borderColor: "rgba(239,220,166,.35)" }}>
+          <h3 style={{ color: "var(--gold)" }}>Aucune visite enregistrée pour l'instant</h3>
+          <p style={{ fontSize: ".84rem", color: "var(--mute)", margin: 0, lineHeight: 1.6 }}>
+            La mesure d'audience démarre dès la première visite du site public. Si le compteur reste à zéro
+            après plusieurs visites, vérifiez que la migration SQL a bien été exécutée dans Supabase.
+          </p>
+        </div>
+      )}
       {stats.map((s, i) => (
         <div className="stat" key={i}>
           <div className="k">{s.k}</div><div className="v neon">{s.v}</div><div className="d">{s.d}</div>

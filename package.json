@@ -3,6 +3,6 @@
   "private": true,
   "description": "Assemble le site public + l'administration compilée dans un seul dossier de sortie (dist-site) pour un déploiement Vercel unique.",
   "scripts": {
-    "build": "cd admin && npm install && npm run build && cd .. && rm -rf dist-site && mkdir -p dist-site/admin && cp index.html robots.txt sitemap.xml dist-site/ && cp -r admin/dist/* dist-site/admin/ && ([ -d assets ] && cp -r assets dist-site/ || true)"
+    "build": "cd admin && npm install && npm run build && cd .. && rm -rf dist-site && mkdir -p dist-site/admin && cp index.html avis.html robots.txt sitemap.xml dist-site/ && cp -r admin/dist/* dist-site/admin/ && ([ -d assets ] && cp -r assets dist-site/ || true)"
   }
 }

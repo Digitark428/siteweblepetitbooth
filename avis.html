@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Votre avis — Le Petit Booth</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Manrope:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --void:#0B0416; --abyss:#050208; --neon:#C77DFF; --magenta:#FF4D8D; --gold:#EFDCA8;
+  --mist:#EFE7FA; --mute:#9C8FB4; --edge:rgba(199,125,255,.28); --edge-soft:rgba(199,125,255,.15);
+  --glass:rgba(28,16,48,.55); --grad:linear-gradient(135deg,#FF4D8D,#C77DFF 55%,#8a6bff);
+  --ease:cubic-bezier(.2,.8,.2,1);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:
+    radial-gradient(90% 60% at 50% -10%,rgba(199,125,255,.22),transparent 60%),
+    radial-gradient(70% 50% at 90% 100%,rgba(255,77,141,.16),transparent 60%),var(--void);
+  color:var(--mist);font-family:'Manrope',system-ui,sans-serif;min-height:100vh;
+  display:flex;align-items:center;justify-content:center;padding:26px 18px;
+}
+.wrap{width:100%;max-width:560px}
+.card{
+  background:var(--glass);border:1px solid var(--edge-soft);border-radius:22px;
+  padding:clamp(26px,5vw,42px);backdrop-filter:blur(16px);box-shadow:0 30px 80px -40px #000;
+}
+h1{font-family:'Sora',sans-serif;font-size:clamp(1.3rem,4vw,1.7rem);margin:0 0 6px;font-weight:700}
+.sub{color:var(--mute);font-size:.9rem;margin:0 0 26px;line-height:1.6}
+label{display:block;margin-bottom:16px}
+.lbl{display:block;font-family:'Sora',sans-serif;font-size:.66rem;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);margin-bottom:7px}
+.inp,textarea{
+  width:100%;background:rgba(5,2,8,.5);border:1px solid var(--edge-soft);border-radius:12px;
+  padding:13px 15px;color:var(--mist);font-family:inherit;font-size:.95rem;transition:border-color .25s;
+}
+.inp:focus,textarea:focus{outline:none;border-color:var(--neon)}
+textarea{min-height:120px;resize:vertical}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:520px){.row{grid-template-columns:1fr}}
+.stars{display:flex;gap:8px;margin-bottom:18px}
+.stars button{background:none;border:none;cursor:pointer;padding:0;color:rgba(239,220,166,.28);transition:transform .2s,color .2s}
+.stars button:hover{transform:scale(1.15)}
+.stars button.on{color:var(--gold)}
+.stars svg{width:30px;height:30px;fill:currentColor}
+.btn{
+  width:100%;background:var(--grad);border:none;border-radius:999px;color:#fff;cursor:pointer;
+  font-family:'Sora',sans-serif;font-weight:600;font-size:.9rem;padding:15px;margin-top:8px;
+  transition:transform .3s var(--ease),box-shadow .3s;
+}
+.btn:hover{transform:translateY(-2px);box-shadow:0 16px 40px -16px rgba(199,125,255,.9)}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn--ghost{background:transparent;border:1px solid var(--edge);color:var(--mist)}
+.rec{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:8px}
+.rec-btn{
+  width:64px;height:64px;border-radius:50%;border:1px solid var(--edge);background:rgba(255,77,141,.14);
+  color:var(--magenta);cursor:pointer;display:grid;place-items:center;flex:none;transition:transform .3s,background .3s;
+}
+.rec-btn:hover{transform:scale(1.06)}
+.rec-btn.on{background:var(--magenta);color:#fff;animation:pulse 1.4s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,77,141,.5)}50%{box-shadow:0 0 0 14px rgba(255,77,141,0)}}
+.rec-btn svg{width:26px;height:26px}
+.timer{font-family:'Sora',sans-serif;font-size:1.1rem;font-weight:600}
+.hint{font-size:.78rem;color:var(--mute);line-height:1.6}
+.eqp{display:flex;align-items:flex-end;gap:3px;height:26px}
+.eqp span{width:4px;background:var(--grad);border-radius:2px;height:20%}
+.eqp.on span{animation:eqb .9s ease-in-out infinite}
+.eqp span:nth-child(2){animation-delay:-.2s}.eqp span:nth-child(3){animation-delay:-.5s}
+.eqp span:nth-child(4){animation-delay:-.1s}.eqp span:nth-child(5){animation-delay:-.7s}
+.eqp span:nth-child(6){animation-delay:-.35s}.eqp span:nth-child(7){animation-delay:-.6s}
+@keyframes eqb{0%,100%{height:18%}50%{height:100%}}
+.ok{text-align:center;padding:20px 0}
+.ok-ico{width:74px;height:74px;border-radius:50%;background:rgba(126,231,159,.16);border:1px solid rgba(126,231,159,.4);
+  color:#8ff0b0;display:grid;place-items:center;margin:0 auto 20px}
+.ok-ico svg{width:34px;height:34px;stroke:currentColor;fill:none;stroke-width:2.2}
+.err{color:#ff8fa8;font-size:.85rem;margin-top:12px;min-height:18px}
+.brand{text-align:center;margin-bottom:24px;font-family:'Sora',sans-serif;font-size:.66rem;letter-spacing:.3em;text-transform:uppercase;color:var(--neon)}
+.thumb{width:64px;height:64px;border-radius:50%;object-fit:cover;border:1px solid var(--edge)}
+.file-row{display:flex;align-items:center;gap:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="brand">Le Petit Booth</p>
+  <div class="card" id="card">
+    <h1 id="ttl">Votre avis</h1>
+    <p class="sub" id="sub">Chargement…</p>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://dyywfebfhwlhwufmafpm.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR5eXdmZWJmaHdsaHd1Zm1hZnBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxMjAxMTQsImV4cCI6MjEwMDY5NjExNH0.-sKjKO34U-GytGo2_M2oWt0KPBegcyDsS8VQRqnuAc8';
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: false } });
+const card = document.getElementById('card');
+const params = new URLSearchParams(location.search);
+// type : "ecrit" (défaut) ou "vocal"
+const type = (params.get('type') || 'ecrit').toLowerCase() === 'vocal' ? 'vocal' : 'ecrit';
+let note = 5, photoFile = null, audioBlob = null;
+
+const starsHtml = () => '<div class="stars" id="stars">' + [1,2,3,4,5].map(i =>
+  '<button type="button" data-n="' + i + '" class="' + (i <= note ? 'on' : '') + '" aria-label="' + i + ' étoile(s)">' +
+  '<svg viewBox="0 0 24 24"><path d="M12 2l3 6.5 7 .9-5 4.9 1.2 7L12 18l-6.2 3.3L7 14.3 2 9.4l7-.9z"/></svg></button>').join('') + '</div>';
+
+function form(){
+  card.innerHTML =
+    '<h1>' + (type === 'vocal' ? 'Votre témoignage vocal' : 'Votre avis') + '</h1>' +
+    '<p class="sub">' + (type === 'vocal'
+      ? "Merci d'avoir choisi Le Petit Booth ! Enregistrez un petit message vocal, il apparaîtra sur notre site."
+      : "Merci d'avoir choisi Le Petit Booth ! Partagez votre expérience, elle apparaîtra sur notre site.") + '</p>' +
+    '<div class="row">' +
+      '<label><span class="lbl">Prénom</span><input class="inp" id="prenom" required></label>' +
+      '<label><span class="lbl">Nom</span><input class="inp" id="nom"></label>' +
+    '</div>' +
+    '<label><span class="lbl">Votre événement</span><input class="inp" id="event" placeholder="Mariage à Saint-Gilles, anniversaire…"></label>' +
+    '<span class="lbl">Votre note</span>' + starsHtml() +
+    (type === 'vocal'
+      ? '<span class="lbl">Votre message vocal</span>' +
+        '<div class="rec">' +
+          '<button type="button" class="rec-btn" id="recBtn" aria-label="Enregistrer">' +
+            '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3z"/><path d="M18 11a6 6 0 0 1-12 0H4a8 8 0 0 0 7 7.9V22h2v-3.1A8 8 0 0 0 20 11z"/></svg>' +
+          '</button>' +
+          '<div><div class="timer" id="timer">0:00</div><div class="eqp" id="eqp">' + '<span></span>'.repeat(7) + '</div></div>' +
+        '</div>' +
+        '<p class="hint" id="recHint">Touchez le micro pour démarrer. 2 minutes maximum.</p>' +
+        '<div id="playback"></div>'
+      : '<label><span class="lbl">Votre commentaire</span><textarea id="texte" placeholder="Racontez-nous…"></textarea></label>') +
+    '<span class="lbl">Votre photo (facultatif)</span>' +
+    '<div class="file-row" style="margin-bottom:18px">' +
+      '<div id="preview"></div>' +
+      '<button type="button" class="btn btn--ghost" style="width:auto;padding:11px 20px;margin:0" id="pickPhoto">Choisir une photo</button>' +
+      '<input type="file" id="photo" accept="image/*" hidden>' +
+    '</div>' +
+    '<button class="btn" id="send">Envoyer mon avis</button>' +
+    '<div class="err" id="err"></div>';
+
+  document.getElementById('stars').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    note = +b.dataset.n;
+    [...document.querySelectorAll('#stars button')].forEach(x => x.classList.toggle('on', +x.dataset.n <= note));
+  });
+  document.getElementById('pickPhoto').onclick = () => document.getElementById('photo').click();
+  document.getElementById('photo').onchange = e => {
+    photoFile = e.target.files[0] || null;
+    document.getElementById('preview').innerHTML = photoFile
+      ? '<img class="thumb" src="' + URL.createObjectURL(photoFile) + '" alt="">' : '';
+  };
+  document.getElementById('send').onclick = submit;
+  if (type === 'vocal') setupRecorder();
+}
+
+/* ---------- Enregistrement vocal ---------- */
+let mediaRec = null, chunks = [], timerInt = null, secs = 0;
+function setupRecorder(){
+  const btn = document.getElementById('recBtn');
+  const eqp = document.getElementById('eqp');
+  const hint = document.getElementById('recHint');
+  const timer = document.getElementById('timer');
+  if (!navigator.mediaDevices || !window.MediaRecorder){
+    hint.textContent = "Votre navigateur ne permet pas l'enregistrement. Essayez avec Chrome ou Safari à jour.";
+    btn.disabled = true; return;
+  }
+  const stop = () => {
+    if (mediaRec && mediaRec.state !== 'inactive') mediaRec.stop();
+    clearInterval(timerInt); btn.classList.remove('on'); eqp.classList.remove('on');
+  };
+  btn.onclick = async () => {
+    if (mediaRec && mediaRec.state === 'recording'){ stop(); return; }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      chunks = []; secs = 0; timer.textContent = '0:00';
+      mediaRec = new MediaRecorder(stream);
+      mediaRec.ondataavailable = e => chunks.push(e.data);
+      mediaRec.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        audioBlob = new Blob(chunks, { type: chunks[0] ? chunks[0].type : 'audio/webm' });
+        hint.textContent = 'Enregistrement prêt. Vous pouvez le réécouter ou recommencer.';
+        document.getElementById('playback').innerHTML =
+          '<audio controls style="width:100%;margin-bottom:14px" src="' + URL.createObjectURL(audioBlob) + '"></audio>';
+      };
+      mediaRec.start();
+      btn.classList.add('on'); eqp.classList.add('on');
+      hint.textContent = 'Enregistrement en cours… touchez le micro pour arrêter.';
+      timerInt = setInterval(() => {
+        secs++; timer.textContent = Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0');
+        if (secs >= 120) stop();
+      }, 1000);
+    } catch (e){
+      hint.textContent = "Micro non autorisé. Autorisez l'accès au micro puis réessayez.";
+    }
+  };
+}
+
+/* ---------- Envoi ---------- */
+async function upload(file, prefix, ext){
+  const name = prefix + '/' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '.' + ext;
+  const { error } = await sb.storage.from('medias').upload(name, file, { upsert: false });
+  if (error) throw error;
+  return sb.storage.from('medias').getPublicUrl(name).data.publicUrl;
+}
+
+async function submit(){
+  const err = document.getElementById('err');
+  const btn = document.getElementById('send');
+  const prenom = document.getElementById('prenom').value.trim();
+  const nom = document.getElementById('nom').value.trim();
+  const ev = document.getElementById('event').value.trim();
+  const texte = type === 'ecrit' ? document.getElementById('texte').value.trim() : '';
+  err.textContent = '';
+  if (!prenom){ err.textContent = 'Merci d\'indiquer votre prénom.'; return; }
+  if (type === 'ecrit' && !texte){ err.textContent = 'Merci d\'écrire quelques mots.'; return; }
+  if (type === 'vocal' && !audioBlob){ err.textContent = 'Merci d\'enregistrer votre message vocal.'; return; }
+
+  btn.disabled = true; btn.textContent = 'Envoi en cours…';
+  try {
+    let photo_url = null, audio_url = null;
+    if (photoFile) photo_url = await upload(photoFile, 'avis', (photoFile.name.split('.').pop() || 'jpg'));
+    if (audioBlob){
+      const ext = (audioBlob.type.includes('mp4') || audioBlob.type.includes('mpeg')) ? 'm4a' : 'webm';
+      audio_url = await upload(audioBlob, 'avis', ext);
+    }
+    const { error } = await sb.rpc('submit_review', {
+      p_token: params.get('t') || '',
+      p_kind: type === 'vocal' ? 'audio' : 'text',
+      p_prenom: prenom, p_nom: nom, p_lieu: ev,
+      p_texte: texte, p_note: note,
+      p_photo_url: photo_url, p_audio_url: audio_url
+    });
+    if (error) throw error;
+    success();
+  } catch (e){
+    btn.disabled = false; btn.textContent = 'Envoyer mon avis';
+    err.textContent = "L'envoi a échoué : " + (e.message || 'erreur inconnue');
+  }
+}
+
+function success(){
+  card.innerHTML =
+    '<div class="ok"><div class="ok-ico"><svg viewBox="0 0 24 24"><path d="M4 12.5l5.5 5.5L20 7"/></svg></div>' +
+    '<h1>Merci beaucoup !</h1>' +
+    '<p class="sub">Votre avis est publié sur notre site. Ça compte énormément pour nous.</p>' +
+    '<a class="btn" style="display:block;text-decoration:none;text-align:center" href="../">Découvrir le site</a></div>';
+}
+
+form();
+</script>
+</body>
+</html>
