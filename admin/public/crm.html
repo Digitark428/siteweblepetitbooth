@@ -312,6 +312,19 @@ select option{background:#170d28}
   .modal-body{padding:18px}
 }
 .scrim{display:none}
+
+/* ---------- Module facturation ---------- */
+.fbox{background:rgba(12,7,22,.45);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:6px}
+.frow{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:6px 0;font-size:13.5px;color:var(--muted)}
+.frow b{color:var(--text);font-family:'Sora',sans-serif;font-weight:600;white-space:nowrap}
+.fsep{height:1px;background:var(--border);margin:9px 0}
+.fpill{display:inline-flex;align-items:center;padding:4px 12px;border-radius:999px;font-size:11.5px;font-weight:700;
+  font-family:'Sora',sans-serif;color:var(--pc);background:color-mix(in srgb,var(--pc) 16%,transparent);
+  border:1px solid color-mix(in srgb,var(--pc) 40%,transparent)}
+.fbtns{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:6px}
+.fbtns .btn{flex:1 1 auto;min-width:190px}
+.fbtns .btn[disabled]{opacity:.45;cursor:not-allowed}
+.dnum{font-size:11.5px;color:var(--violet);font-weight:600;margin-left:6px}
 </style>
 </head>
 <body>
@@ -531,7 +544,7 @@ const ic=(p,w=19)=>`<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="no
 
 /* ---------- options & total ---------- */
 const optionsTotal=c=>(c.options||[]).reduce((s,o)=>s+Number(o.prix||0),0);
-const grandTotal=c=>Number(c.montant||0)+optionsTotal(c);
+const grandTotal=c=>Math.max(0,Number(c.montant||0)+optionsTotal(c)+Number(c.fraisKm||0)-Number(c.remise||0));
 /* ---------- acompte ---------- */
 const formuleLabel=c=>(c.formule==='perso' ? (c.formuleNom||'Prestation personnalisée') : (FORMULES[c.formule]?.nom||'—'));
 const acompteAmt=c=>Math.round(grandTotal(c)*(Number(c.acomptePct)||0)/100);
@@ -598,6 +611,7 @@ function logout(){ state.user=null; state.adminPw=null; state.route='dashboard';
   const u=$('#admin-user'); if(u)u.value=''; $('#admin-pass').value=''; $('#admin-err').textContent=''; refreshDbBadge();
 }
 function enterApp(){
+  factLoad();
   const cc=document.getElementById('crm-connecting'); if(cc)cc.style.display='none';
   $('#public').innerHTML=''; $('#public').style.display='none';
   $('#login').style.display='none'; $('#app').style.display='block';
@@ -613,7 +627,8 @@ const ADMIN_NAV=[
   {id:'pipeline',label:'CRM · Pipeline',icon:I.pipe},
   {id:'clients',label:'Clients',icon:I.clients},
   {id:'planning',label:'Planning',icon:I.cal},
-  {id:'prestataires',label:'Prestataires',icon:I.team}
+  {id:'prestataires',label:'Prestataires',icon:I.team},
+  {id:'facturation',label:'Facturation',icon:I.doc}
 ];
 function buildNav(){
   $('#nav').innerHTML=ADMIN_NAV.map(n=>`<a data-route="${n.id}" onclick="App.go('${n.id}')">
@@ -627,6 +642,7 @@ const TITLES={dashboard:['Tableau de bord','Vue d\'ensemble de votre activité']
   clients:['Clients','Toutes vos fiches clients'],
   planning:['Planning','Vos prestations dans le temps'],
   prestataires:['Prestataires','Plannings et missions de l\'équipe'],
+  facturation:['Facturation','Coordonnées, numérotation et textes de vos documents'],
   emails:['Emails automatiques','Relances programmées avant chaque événement'],
   portal:['Mon espace','Votre prestation Le Petit Booth']};
 
@@ -642,6 +658,7 @@ function render(){
     case 'clients': topAction(`<button class="btn" onclick="App.openClient()">${ic(I.plus,16)} Nouveau client</button>`); c.innerHTML=viewClients(); break;
     case 'planning': c.innerHTML=viewPlanning(); break;
     case 'prestataires': topAction(`<button class="btn" onclick="App.openPrest()">${ic(I.plus,16)} Nouveau prestataire</button>`); c.innerHTML=viewPrestataires(); break;
+    case 'facturation': c.innerHTML=renderFacturation(); break;
     default: c.innerHTML=viewDashboard();
   }
 }
@@ -822,7 +839,7 @@ function assignListHtml(){
 }
 function renderModal(){
   const isNew=!state.modalClientId;
-  const c=isNew?{id:'',token:'',prenom:'',nom:'',telephone:'',email:'',typeEvenement:'Mariage',datePrestation:'',heureDebut:'',heureFin:'',adresse:'',lieu:'',formule:'experience',prestataire:'',montant:590,status:'demande',documents:{},notes:'',options:[],assignments:[],acomptePct:0}:Object.assign({},findClient(state.modalClientId));
+  const c=isNew?{id:'',token:'',prenom:'',nom:'',telephone:'',email:'',typeEvenement:'Mariage',datePrestation:'',heureDebut:'',heureFin:'',adresse:'',codePostal:'',ville:'',pays:'France',fraisKm:0,remise:0,remiseLabel:'',lieu:'',formule:'experience',prestataire:'',montant:590,status:'demande',documents:{},notes:'',options:[],assignments:[],acomptePct:0}:Object.assign({},findClient(state.modalClientId));
   const s=stageOf(c.status);
   const f=(label,key,type='text',ph='')=>`<div class="field"><label>${label}</label>
     <input id="cf-${key}" type="${type}" value="${esc(c[key])}" placeholder="${ph}"></div>`;
@@ -855,6 +872,9 @@ function renderModal(){
         ${f('Date de prestation','datePrestation','date')}
         ${f('Heure de début','heureDebut','time')}${f('Heure de fin','heureFin','time')}
         <div class="field full"><label>Adresse</label><input id="cf-adresse" value="${esc(c.adresse)}" placeholder="Adresse complète"></div>
+        <div class="field"><label>Code postal</label><input id="cf-codePostal" value="${esc(c.codePostal||'')}" placeholder="97460"></div>
+        <div class="field"><label>Ville</label><input id="cf-ville" value="${esc(c.ville||'')}" placeholder="Saint-Paul"></div>
+        <div class="field"><label>Pays</label><input id="cf-pays" value="${esc(c.pays||'France')}"></div>
         <div class="field full"><label>Lieu (nom)</label><input id="cf-lieu" value="${esc(c.lieu)}" placeholder="Ex. Domaine de la Roseraie"></div>
       </div>
 
@@ -867,7 +887,10 @@ function renderModal(){
           <input id="cf-formuleNom" value="${esc(c.formuleNom||'')}" placeholder="ex. Booth 360 + borne photo"></div>
         <div class="field"><label>Montant formule (€)</label><input id="cf-montant" type="number" value="${esc(c.montant)}" oninput="App.recalcTotal()"></div>
         <div class="field"><label>Étape du pipeline</label><select id="cf-status">${opts(STAGES,c.status,x=>x.id,x=>x.label)}</select></div>
-        <div class="field"><label>Acompte (%)</label><input id="cf-acomptePct" type="number" min="0" max="100" value="${esc(c.acomptePct||0)}" placeholder="ex. 30" oninput="App.recalcTotal()"></div>
+        <div class="field"><label>Acompte (%)</label><input id="cf-acomptePct" type="number" min="0" max="100" value="${esc(c.acomptePct||FACT.acomptePct||35)}" placeholder="ex. 35" oninput="App.recalcTotal()"></div>
+        <div class="field"><label>Frais de déplacement (€)</label><input id="cf-fraisKm" type="number" min="0" value="${esc(c.fraisKm||0)}" oninput="App.recalcTotal()"></div>
+        <div class="field"><label>Remise (€)</label><input id="cf-remise" type="number" min="0" value="${esc(c.remise||0)}" oninput="App.recalcTotal()"></div>
+        <div class="field"><label>Motif de la remise</label><input id="cf-remiseLabel" value="${esc(c.remiseLabel||'')}" placeholder="ex. geste commercial"></div>
       </div>
 
       <div class="block-title" style="display:flex;align-items:center;gap:8px">${ic(I.team,14)} Prestataires affectés</div>
@@ -894,8 +917,8 @@ function renderModal(){
           </div>`).join('') + `</div>`;
       })()}
 
-      <div class="block-title">Documents</div>
-      ${docRow('devis','Devis (PDF)')}${docRow('factureAcompte','Facture acompte (PDF)')}${docRow('factureSolde','Facture solde (PDF)')}
+      ${isNew?'':blocDocuments(c)}
+      ${isNew?'':blocFinancier(c)}
 
       ${isNew?'':`<div class="block-title" style="display:flex;align-items:center;gap:8px">${ic(I.link,14)} Lien privé client</div>
       <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
@@ -929,12 +952,17 @@ function onFormule(v){
 function recalcTotal(){
   const base=Number(($('#cf-montant')?.value)||0);
   const opt=state.editOptions.reduce((s,o)=>s+Number(o.prix||0),0);
-  const total=base+opt;
+  const km=Number(($('#cf-fraisKm')?.value)||0);
+  const rem=Number(($('#cf-remise')?.value)||0);
+  const total=Math.max(0,base+opt+km-rem);
   const pct=Math.max(0,Math.min(100,Number(($('#cf-acomptePct')?.value)||0)));
-  const ac=Math.round(total*pct/100);
+  const ac=Math.round(total*pct/100*100)/100;
   const el=$('#opt-total'); if(!el)return;
-  el.innerHTML=`Formule : <b style="color:var(--text)">${eur(base)}</b> &nbsp;·&nbsp; Options : <b style="color:var(--text)">${eur(opt)}</b> &nbsp;·&nbsp; <span class="gtext" style="font-family:'Sora';font-weight:800;font-size:15px">Total : ${eur(total)}</span>`
-    + (pct>0?`<div style="margin-top:8px;color:var(--muted)">Acompte ${pct}% : <b style="color:var(--c-acompte)">${eur(ac)}</b> &nbsp;·&nbsp; Reste à régler : <b style="color:var(--text)">${eur(total-ac)}</b></div>`:'');
+  el.innerHTML=`Formule : <b style="color:var(--text)">${eur(base)}</b> &nbsp;·&nbsp; Options : <b style="color:var(--text)">${eur(opt)}</b>`
+    + (km?` &nbsp;·&nbsp; Déplacement : <b style="color:var(--text)">${eur(km)}</b>`:'')
+    + (rem?` &nbsp;·&nbsp; Remise : <b style="color:var(--pink)">– ${eur(rem)}</b>`:'')
+    + ` &nbsp;·&nbsp; <span class="gtext" style="font-family:'Sora';font-weight:800;font-size:15px">Total : ${eur(total)}</span>`
+    + (pct>0?`<div style="margin-top:8px;color:var(--muted)">Acompte ${pct}% : <b style="color:var(--c-acompte)">${eur(ac)}</b> &nbsp;·&nbsp; Solde : <b style="color:var(--text)">${eur(total-ac)}</b></div>`:'');
 }
 function optAdd(){ state.editOptions.push({id:uid(),nom:'',prix:''}); $('#opt-list').innerHTML=optListHtml(); recalcTotal(); }
 function optRemove(i){ state.editOptions.splice(i,1); $('#opt-list').innerHTML=optListHtml(); recalcTotal(); }
@@ -961,7 +989,9 @@ function getForm(){
   const g=k=>($('#cf-'+k)?.value??'');
   return {prenom:g('prenom'),nom:g('nom'),telephone:g('telephone'),email:g('email'),
     typeEvenement:g('typeEvenement'),datePrestation:g('datePrestation'),heureDebut:g('heureDebut'),heureFin:g('heureFin'),
-    adresse:g('adresse'),lieu:g('lieu'),formule:g('formule'),formuleNom:g('formuleNom'),
+    adresse:g('adresse'),codePostal:g('codePostal'),ville:g('ville'),pays:g('pays'),
+    fraisKm:Number(g('fraisKm')||0),remise:Number(g('remise')||0),remiseLabel:g('remiseLabel'),
+    lieu:g('lieu'),formule:g('formule'),formuleNom:g('formuleNom'),
     montant:Number(g('montant')||0),status:g('status'),notes:g('notes'),
     acomptePct:Math.max(0,Math.min(100,Number(g('acomptePct')||0)))};
 }
@@ -1313,10 +1343,658 @@ async function saveMusiques(token){
   }
 }
 
+/* =========================================================
+   MODULE FACTURATION — devis, factures, paiements
+   Documents générés au format PDF, archivés dans la fiche client.
+   Architecture prête pour Stripe (aucune clé nécessaire aujourd'hui).
+========================================================= */
+
+/* ---------- Paramètres par défaut (modifiables dans l'administration) ---------- */
+const FACT_DEFAUT = {
+  entreprise: {
+    nom: 'Le Petit Booth',
+    adresse: '',
+    codePostal: '',
+    ville: 'Saint-Paul',
+    pays: 'La Réunion',
+    telephone: '0693 813 858',
+    email: 'lepetitbooth@gmail.com',
+    siteWeb: 'lepetitbooth.re',
+    siren: '',
+    tva: '',            // n° TVA intracommunautaire (vide si non assujetti)
+    logoUrl: ''
+  },
+  banque: { iban: '', bic: '', titulaire: 'Le Petit Booth' },
+  acomptePct: 35,
+  delaiValidite: 30,     // jours de validité d'un devis
+  delaiPaiement: 30,     // jours de règlement d'une facture
+  textes: {
+    devis: "Nous vous remercions de votre confiance. Ce devis détaille la prestation convenue pour votre événement.",
+    facture: "Nous vous remercions de votre confiance.",
+    mentions: "TVA non applicable, article 293 B du Code général des impôts.",
+    cgv: "Le devis est valable pour la durée indiquée ci-dessus. La réservation de la date devient ferme à réception de l'acompte. En cas d'annulation à moins de 30 jours de l'événement, l'acompte reste acquis au prestataire. Le solde est exigible selon le délai indiqué. Tout retard de paiement entraîne des pénalités au taux légal ainsi qu'une indemnité forfaitaire de recouvrement de 40 € (art. L441-10 du Code de commerce)."
+  },
+  stripe: { publishableKey: '', actif: false }
+};
+
+let FACT = JSON.parse(JSON.stringify(FACT_DEFAUT));
+
+function factMerge(base, over){
+  const out = JSON.parse(JSON.stringify(base));
+  Object.keys(over || {}).forEach(k => {
+    if (over[k] && typeof over[k] === 'object' && !Array.isArray(over[k])) out[k] = factMerge(out[k] || {}, over[k]);
+    else if (over[k] !== undefined && over[k] !== null) out[k] = over[k];
+  });
+  return out;
+}
+
+async function factLoad(){
+  if (!supa) return;
+  try {
+    const { data, error } = await supa.rpc('facturation_get');
+    if (!error && data) FACT = factMerge(FACT_DEFAUT, data);
+  } catch (e) { console.warn('Paramètres de facturation indisponibles', e); }
+}
+
+async function factSave(){
+  const msg = $('#fact-msg');
+  const g = id => ($('#' + id)?.value || '').trim();
+  const gn = id => Number($('#' + id)?.value || 0);
+  FACT = factMerge(FACT, {
+    entreprise: {
+      nom: g('fx-nom'), adresse: g('fx-adresse'), codePostal: g('fx-cp'), ville: g('fx-ville'),
+      pays: g('fx-pays'), telephone: g('fx-tel'), email: g('fx-email'), siteWeb: g('fx-web'),
+      siren: g('fx-siren'), tva: g('fx-tva'), logoUrl: g('fx-logo')
+    },
+    banque: { iban: g('fx-iban'), bic: g('fx-bic'), titulaire: g('fx-titulaire') },
+    acomptePct: gn('fx-acompte') || 35,
+    delaiValidite: gn('fx-validite') || 30,
+    delaiPaiement: gn('fx-paiement') || 30,
+    textes: { devis: g('fx-t-devis'), facture: g('fx-t-facture'), mentions: g('fx-t-mentions'), cgv: g('fx-t-cgv') },
+    stripe: { publishableKey: g('fx-stripe-pk'), actif: !!$('#fx-stripe-actif')?.checked }
+  });
+  try {
+    if (!supa) throw new Error('hors ligne');
+    const { error } = await supa.rpc('facturation_save', { p_payload: FACT });
+    if (error) throw error;
+    // Points de départ des compteurs (facultatif)
+    for (const [pfx, id] of [['D','fx-n-d'],['FA','fx-n-fa'],['FS','fx-n-fs'],['F','fx-n-f']]){
+      const v = $('#' + id)?.value;
+      if (v !== '' && v != null && !Number.isNaN(Number(v))){
+        await supa.rpc('set_doc_counter', { p_prefix: pfx, p_value: Number(v) });
+      }
+    }
+    if (msg){ msg.style.color = 'var(--c-confirme)'; msg.textContent = '✅ Paramètres enregistrés.'; }
+  } catch (e) {
+    if (msg){ msg.style.color = '#ff8585'; msg.textContent = "Enregistrement impossible : " + (e.message || 'erreur'); }
+  }
+}
+
+/* ---------- Calculs financiers ---------- */
+const fraisKmOf = c => Number(c.fraisKm || 0);
+const remiseOf  = c => Number(c.remise || 0);
+const sousTotal = c => Number(c.montant || 0) + optionsTotal(c) + fraisKmOf(c);
+const totalTTC  = c => Math.max(0, sousTotal(c) - remiseOf(c));
+const pctAcompte = c => Number(c.acomptePct) > 0 ? Number(c.acomptePct) : Number(FACT.acomptePct || 35);
+const montantAcompte = c => Math.round(totalTTC(c) * pctAcompte(c) / 100 * 100) / 100;
+const montantSolde   = c => Math.round((totalTTC(c) - montantAcompte(c)) * 100) / 100;
+
+const paiementsOf = c => Array.isArray(c.paiements) ? c.paiements : [];
+const dejaPaye = c => paiementsOf(c).filter(p => p.statut === 'paye')
+  .reduce((s, p) => s + Number(p.montant || 0), 0);
+const resteAPayer = c => Math.max(0, Math.round((totalTTC(c) - dejaPaye(c)) * 100) / 100);
+
+const factuOf = c => Object.assign({
+  devisStatut: 'brouillon', faStatut: 'a_payer', fsStatut: 'en_attente',
+  fStatut: 'a_payer', paiementStatut: 'aucun'
+}, c.factu || {});
+
+const LIB_STATUT = {
+  brouillon:'Brouillon', envoye:'Envoyé', accepte:'Accepté', refuse:'Refusé',
+  a_payer:'À payer', payee:'Payée', en_attente:'En attente',
+  aucun:'Aucun paiement', acompte:'Acompte reçu', complet:'Paiement complet',
+  echelonne:'Paiement en plusieurs fois', rembourse:'Remboursé'
+};
+const COUL_STATUT = {
+  brouillon:'#8d8aa6', envoye:'#4d9dff', accepte:'#3ecf8e', refuse:'#ff6b6b',
+  a_payer:'#f5c542', payee:'#3ecf8e', en_attente:'#8d8aa6',
+  aucun:'#8d8aa6', acompte:'#2dd4bf', complet:'#3ecf8e',
+  echelonne:'#C77DFF', rembourse:'#ff9f43'
+};
+const pill = s => `<span class="fpill" style="--pc:${COUL_STATUT[s]||'#8d8aa6'}">${LIB_STATUT[s]||s}</span>`;
+
+/* ---------- Numérotation ---------- */
+async function nextDocNumber(prefix){
+  if (!supa) return prefix + '/—';
+  const { data, error } = await supa.rpc('next_doc_number', { p_prefix: prefix });
+  if (error) throw error;
+  return data;
+}
+
+/* ---------- Génération des PDF ---------- */
+const DOC_DEFS = {
+  devis:          { prefix:'D',  titre:'DEVIS',              part:1,    cle:'devis' },
+  factureAcompte: { prefix:'FA', titre:"FACTURE D'ACOMPTE",  part:'ac', cle:'factureAcompte' },
+  factureSolde:   { prefix:'FS', titre:'FACTURE DE SOLDE',   part:'so', cle:'factureSolde' },
+  factureGlobale: { prefix:'F',  titre:'FACTURE',            part:1,    cle:'factureGlobale' }
+};
+
+function ensureJsPDF(){
+  return new Promise((res, rej) => {
+    if (window.jspdf && window.jspdf.jsPDF) return res(window.jspdf.jsPDF);
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
+    s.onload = () => res(window.jspdf.jsPDF);
+    s.onerror = () => rej(new Error('Impossible de charger le générateur PDF'));
+    document.head.appendChild(s);
+  });
+}
+
+const fmtEur = n => Number(n || 0).toFixed(2).replace('.', ',') + ' €';
+function dateFR(d){ const x = d instanceof Date ? d : new Date(d); return String(x.getDate()).padStart(2,'0')+'/'+String(x.getMonth()+1).padStart(2,'0')+'/'+x.getFullYear(); }
+function addDays(d, n){ const x = new Date(d); x.setDate(x.getDate()+n); return x; }
+
+async function buildPdf(c, kind, numero){
+  const jsPDF = await ensureJsPDF();
+  const def = DOC_DEFS[kind];
+  const doc = new jsPDF({ unit:'mm', format:'a4' });
+  const W = 210, M = 16;
+  const E = FACT.entreprise, B = FACT.banque;
+  const VIOLET = [199,125,255], MAGENTA = [255,77,141], SOMBRE = [26,14,40], GRIS = [120,110,140];
+
+  // ---- Bandeau ----
+  doc.setFillColor(...SOMBRE); doc.rect(0, 0, W, 34, 'F');
+  doc.setFillColor(...VIOLET); doc.rect(0, 33, W, 1.2, 'F');
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(19);
+  doc.text(E.nom || 'Le Petit Booth', M, 15);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(210,195,235);
+  doc.text('Vidéo Booth 360 · La Réunion', M, 21);
+  doc.setFontSize(15); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+  doc.text(def.titre, W - M, 15, { align:'right' });
+  doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(230,215,250);
+  doc.text('N° ' + numero, W - M, 21.5, { align:'right' });
+  doc.text(dateFR(new Date()), W - M, 26.5, { align:'right' });
+
+  let y = 46;
+  // ---- Émetteur / Client ----
+  doc.setFontSize(7.5); doc.setTextColor(...GRIS); doc.setFont('helvetica','bold');
+  doc.text('ÉMETTEUR', M, y); doc.text('CLIENT', 118, y);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(40,30,55);
+  const emetteur = [E.nom, E.adresse, [E.codePostal, E.ville].filter(Boolean).join(' '), E.pays,
+                    E.telephone, E.email, E.siren ? 'SIREN ' + E.siren : '', E.tva ? 'TVA ' + E.tva : '']
+                   .filter(Boolean);
+  const client = [[c.prenom, c.nom].filter(Boolean).join(' '), c.adresse,
+                  [c.codePostal, c.ville].filter(Boolean).join(' '), c.pays || 'France',
+                  c.telephone, c.email].filter(Boolean);
+  let yE = y + 5.5, yC = y + 5.5;
+  emetteur.forEach(l => { doc.text(String(l), M, yE); yE += 4.6; });
+  client.forEach(l => { doc.text(String(l), 118, yC); yC += 4.6; });
+  y = Math.max(yE, yC) + 6;
+
+  // ---- Encadré prestation ----
+  doc.setDrawColor(226,216,240); doc.setFillColor(250,247,254);
+  doc.roundedRect(M, y, W - 2*M, 16, 2.5, 2.5, 'FD');
+  doc.setFontSize(7.5); doc.setTextColor(...GRIS); doc.setFont('helvetica','bold');
+  doc.text('ÉVÉNEMENT', M + 5, y + 5.5);
+  doc.text('DATE', 78, y + 5.5); doc.text('HORAIRES', 118, y + 5.5); doc.text('LIEU', 152, y + 5.5);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(40,30,55);
+  doc.text(String(c.typeEvenement || '—').slice(0,26), M + 5, y + 11.5);
+  doc.text(c.datePrestation ? dateFR(c.datePrestation) : '—', 78, y + 11.5);
+  doc.text(((c.heureDebut||'—') + (c.heureFin ? ' – ' + c.heureFin : '')).slice(0,18), 118, y + 11.5);
+  doc.text(String(c.lieu || c.ville || '—').slice(0,24), 152, y + 11.5);
+  y += 24;
+
+  // ---- Tableau des lignes ----
+  const lignes = [];
+  lignes.push({ d: formuleLabel(c) + (FORMULES[c.formule]?.desc ? ' — ' + FORMULES[c.formule].desc : ''), p: Number(c.montant||0) });
+  (c.options || []).forEach(o => lignes.push({ d: 'Option — ' + (o.nom || 'option'), p: Number(o.prix||0) }));
+  if (fraisKmOf(c) > 0) lignes.push({ d: 'Frais de déplacement' + (c.fraisKmLabel ? ' — ' + c.fraisKmLabel : ''), p: fraisKmOf(c) });
+
+  doc.setFillColor(...SOMBRE); doc.rect(M, y, W - 2*M, 8, 'F');
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(8);
+  doc.text('DÉSIGNATION', M + 4, y + 5.4);
+  doc.text('MONTANT', W - M - 4, y + 5.4, { align:'right' });
+  y += 8;
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(40,30,55);
+  lignes.forEach((l, i) => {
+    if (i % 2) { doc.setFillColor(249,246,253); doc.rect(M, y, W - 2*M, 8, 'F'); }
+    const txt = doc.splitTextToSize(String(l.d), 128)[0];
+    doc.text(txt, M + 4, y + 5.4);
+    doc.text(fmtEur(l.p), W - M - 4, y + 5.4, { align:'right' });
+    y += 8;
+  });
+  doc.setDrawColor(226,216,240); doc.line(M, y, W - M, y);
+  y += 7;
+
+  // ---- Totaux ----
+  const ligneTotal = (lab, val, gras, couleur) => {
+    doc.setFont('helvetica', gras ? 'bold' : 'normal');
+    doc.setFontSize(gras ? 11 : 9.5);
+    if (couleur) doc.setTextColor(...couleur); else doc.setTextColor(40,30,55);
+    doc.text(lab, 118, y);
+    doc.text(val, W - M - 4, y, { align:'right' });
+    y += gras ? 7.5 : 6;
+  };
+  if (remiseOf(c) > 0){
+    ligneTotal('Sous-total', fmtEur(sousTotal(c)));
+    ligneTotal('Remise' + (c.remiseLabel ? ' (' + c.remiseLabel + ')' : ''), '– ' + fmtEur(remiseOf(c)), false, MAGENTA);
+  }
+  ligneTotal('Total TTC', fmtEur(totalTTC(c)), true);
+
+  // Montant dû selon le type de document
+  let montantDu = totalTTC(c), mention = '';
+  if (kind === 'factureAcompte'){
+    montantDu = montantAcompte(c);
+    mention = "Acompte de " + pctAcompte(c) + " % sur un total de " + fmtEur(totalTTC(c)) + ".";
+  } else if (kind === 'factureSolde'){
+    montantDu = montantSolde(c);
+    mention = "Solde après acompte de " + fmtEur(montantAcompte(c)) + " (total " + fmtEur(totalTTC(c)) + ").";
+  } else if (kind === 'devis'){
+    mention = "Acompte de " + pctAcompte(c) + " % (" + fmtEur(montantAcompte(c)) + ") à la réservation, solde de "
+            + fmtEur(montantSolde(c)) + " selon les conditions ci-dessous.";
+  }
+  if (kind !== 'devis'){
+    y += 1.5;
+    doc.setFillColor(...SOMBRE); doc.roundedRect(112, y - 5, W - M - 112, 12, 2, 2, 'F');
+    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(11);
+    doc.text('NET À PAYER', 116, y + 2.6);
+    doc.text(fmtEur(montantDu), W - M - 4, y + 2.6, { align:'right' });
+    y += 14;
+  }
+  if (mention){
+    doc.setFont('helvetica','italic'); doc.setFontSize(8.5); doc.setTextColor(...GRIS);
+    doc.splitTextToSize(mention, W - 2*M).forEach(l => { doc.text(l, M, y); y += 4.6; });
+    y += 2;
+  }
+
+  // ---- Échéances / validité ----
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(40,30,55);
+  if (kind === 'devis'){
+    doc.text("Devis valable " + FACT.delaiValidite + " jours, jusqu'au "
+      + dateFR(addDays(new Date(), Number(FACT.delaiValidite||30))) + '.', M, y); y += 6;
+  } else {
+    doc.text('Règlement sous ' + FACT.delaiPaiement + ' jours, au plus tard le '
+      + dateFR(addDays(new Date(), Number(FACT.delaiPaiement||30))) + '.', M, y); y += 6;
+  }
+
+  // ---- Texte d'accompagnement ----
+  const intro = kind === 'devis' ? FACT.textes.devis : FACT.textes.facture;
+  if (intro){
+    doc.setTextColor(...GRIS);
+    doc.splitTextToSize(intro, W - 2*M).forEach(l => { doc.text(l, M, y); y += 4.6; });
+    y += 3;
+  }
+
+  // ---- Coordonnées bancaires ----
+  if (B.iban || B.bic){
+    doc.setDrawColor(226,216,240); doc.setFillColor(250,247,254);
+    doc.roundedRect(M, y, W - 2*M, 17, 2.5, 2.5, 'FD');
+    doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(...GRIS);
+    doc.text('COORDONNÉES BANCAIRES', M + 5, y + 5.5);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(40,30,55);
+    doc.text([B.titulaire && ('Titulaire : ' + B.titulaire), B.iban && ('IBAN : ' + B.iban), B.bic && ('BIC : ' + B.bic)]
+      .filter(Boolean).join('    ·    '), M + 5, y + 12);
+    y += 22;
+  }
+
+  // ---- Conditions + mentions (pied de page) ----
+  const bas = 272;
+  if (y < bas - 26) y = bas - 26;
+  doc.setFont('helvetica','normal'); doc.setFontSize(6.6); doc.setTextColor(...GRIS);
+  const cgv = kind === 'devis' ? FACT.textes.cgv : (FACT.textes.cgv || '');
+  if (cgv) doc.splitTextToSize(cgv, W - 2*M).slice(0, 5).forEach(l => { doc.text(l, M, y); y += 3.1; });
+  if (FACT.textes.mentions){ y += 1.5; doc.setFont('helvetica','bold'); doc.text(FACT.textes.mentions, M, y); }
+
+  doc.setDrawColor(...VIOLET); doc.setLineWidth(0.8); doc.line(M, 283, W - M, 283);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...GRIS);
+  doc.text([E.nom, E.siteWeb, E.telephone, E.email].filter(Boolean).join('  ·  '), W/2, 288, { align:'center' });
+
+  return doc;
+}
+
+/* ---------- Génération + archivage ---------- */
+async function genererDocuments(){
+  const c = findClient(state.modalClientId);
+  if (!c){ toast("Enregistrez d'abord la fiche."); return; }
+  if (!c.prenom && !c.nom){ toast('Renseignez le nom du client.'); return; }
+  if (totalTTC(c) <= 0){ toast('Renseignez un montant avant de générer.'); return; }
+  const btn = $('#gen-docs'); if (btn){ btn.disabled = true; btn.textContent = 'Génération…'; }
+  try {
+    for (const kind of ['devis','factureAcompte','factureSolde','factureGlobale']){
+      await genererUnDocument(c, kind, false);
+    }
+    await dbSaveClient(c);
+    renderModal();
+    toast('4 documents générés ✓');
+  } catch (e){
+    console.error(e); toast('Erreur : ' + (e.message || 'génération impossible'));
+  } finally {
+    if (btn){ btn.disabled = false; btn.textContent = 'Générer les documents'; }
+  }
+}
+
+async function genererUnDocument(c, kind, save = true){
+  const def = DOC_DEFS[kind];
+  c.documents = c.documents || {};
+  const existant = c.documents[kind];
+  // On conserve le numéro d'origine lors d'une régénération
+  const numero = (existant && existant.numero) ? existant.numero : await nextDocNumber(def.prefix);
+  const doc = await buildPdf(c, kind, numero);
+  const dataUrl = doc.output('datauristring');
+  const nom = numero.replace('/', '-') + ' — ' + def.titre.toLowerCase() + ' — '
+            + [c.prenom, c.nom].filter(Boolean).join(' ') + '.pdf';
+  c.documents[kind] = {
+    name: nom, size: Math.round(dataUrl.length * 0.75), data: dataUrl,
+    numero, genere_le: new Date().toISOString(),
+    montant: kind === 'factureAcompte' ? montantAcompte(c)
+           : kind === 'factureSolde' ? montantSolde(c) : totalTTC(c)
+  };
+  if (save){ await dbSaveClient(c); renderModal(); toast(def.titre + ' régénéré ✓'); }
+  return c.documents[kind];
+}
+
+async function regenererDocument(kind){
+  const c = findClient(state.modalClientId); if (!c) return;
+  try { await genererUnDocument(c, kind, true); }
+  catch (e){ console.error(e); toast('Erreur : ' + (e.message || 'échec')); }
+}
+
+function ouvrirDocument(kind){
+  const c = findClient(state.modalClientId);
+  const d = c?.documents?.[kind]; if (!d) return;
+  const w = window.open(); if (!w){ toast('Autorisez les fenêtres pop-up'); return; }
+  w.document.write('<iframe src="' + d.data + '" style="border:0;width:100%;height:100%;position:absolute;inset:0"></iframe>');
+  w.document.title = d.name;
+}
+
+/* ---------- Statuts ---------- */
+async function setDocStatut(champ, valeur){
+  const c = findClient(state.modalClientId); if (!c) return;
+  c.factu = Object.assign(factuOf(c), { [champ]: valeur });
+  try { await dbSaveClient(c); renderModal(); } catch (e){ console.error(e); }
+}
+
+/* ---------- Paiements (structure prête pour Stripe) ---------- */
+async function payer(type){
+  const c = findClient(state.modalClientId); if (!c) return;
+  const montants = { acompte: montantAcompte(c), solde: montantSolde(c), total: totalTTC(c), echelonne: totalTTC(c) };
+  const montant = montants[type] || 0;
+
+  if (FACT.stripe && FACT.stripe.actif && FACT.stripe.publishableKey){
+    // Branchement Stripe : à activer le jour venu (une seule fonction à écrire).
+    toast('Redirection vers le paiement…');
+    if (typeof window.stripeCheckout === 'function'){
+      return window.stripeCheckout({ client: c, type, montant });
+    }
+    toast('Stripe est activé mais la passerelle n\'est pas encore déployée.');
+    return;
+  }
+
+  // Sans Stripe : enregistrement manuel (encaissement virement, espèces…)
+  const libelle = { acompte:"l'acompte", solde:'le solde', total:'la totalité', echelonne:'le paiement en plusieurs fois' }[type];
+  if (type === 'echelonne'){
+    toast('Le paiement en plusieurs fois sera disponible avec Stripe.');
+    return;
+  }
+  if (!confirm('Enregistrer ' + libelle + ' de ' + fmtEur(montant) + ' comme reçu ?\n\n(Stripe n\'étant pas encore connecté, le paiement est enregistré manuellement.)')) return;
+  await enregistrerPaiement(c, type, montant, 'manuel');
+}
+
+async function enregistrerPaiement(c, type, montant, moyen){
+  const p = { type, montant, statut:'paye', moyen, date:new Date().toISOString() };
+  c.paiements = paiementsOf(c).concat([p]);
+  const f = factuOf(c);
+  if (type === 'acompte'){
+    f.faStatut = 'payee'; f.fsStatut = 'a_payer'; f.devisStatut = 'accepte'; f.paiementStatut = 'acompte';
+    if (['demande','devis','attente'].includes(c.status)) c.status = 'acompte';
+  } else if (type === 'solde'){
+    f.fsStatut = 'payee'; f.paiementStatut = 'complet'; f.fStatut = 'payee';
+    c.status = 'solde';
+  } else if (type === 'total'){
+    f.faStatut = 'payee'; f.fsStatut = 'payee'; f.fStatut = 'payee';
+    f.devisStatut = 'accepte'; f.paiementStatut = 'complet';
+    c.status = 'solde';
+  }
+  c.factu = f;
+  try {
+    await dbSaveClient(c);
+    if (supa && c.id){
+      await supa.rpc('paiement_enregistrer', {
+        p_client_id: c.id, p_type: type, p_montant: montant,
+        p_statut: 'paye', p_moyen: moyen, p_reference: null,
+        p_stripe_session: null, p_stripe_payment: null
+      });
+    }
+  } catch (e){ console.error(e); }
+  renderModal();
+  toast('Paiement enregistré ✓');
+}
+
+/* ---------- Encart financier (fiche client) ---------- */
+function blocFinancier(c){
+  const f = factuOf(c);
+  const paye = dejaPaye(c), reste = resteAPayer(c);
+  const ligne = (lab, val, fort) => `<div class="frow"><span>${lab}</span><b style="${fort?'font-size:15px;color:var(--violet)':''}">${val}</b></div>`;
+  const acomptePaye = f.faStatut === 'payee' || f.paiementStatut === 'complet';
+
+  const histoP = paiementsOf(c);
+  const histoD = Object.entries(c.documents || {})
+    .filter(([k, d]) => DOC_DEFS[k] && d && d.numero)
+    .map(([k, d]) => ({ k, ...d }));
+
+  return `
+  <div class="block-title">Récapitulatif financier</div>
+  <div class="fbox">
+    ${ligne('Prestation', fmtEur(Number(c.montant||0)))}
+    ${optionsTotal(c) ? ligne('Options', fmtEur(optionsTotal(c))) : ''}
+    ${fraisKmOf(c) ? ligne('Frais de déplacement', fmtEur(fraisKmOf(c))) : ''}
+    ${remiseOf(c) ? ligne('Remise', '– ' + fmtEur(remiseOf(c))) : ''}
+    ${ligne('Montant total', fmtEur(totalTTC(c)), true)}
+    <div class="fsep"></div>
+    ${ligne('Acompte (' + pctAcompte(c) + ' %)', fmtEur(montantAcompte(c)))}
+    ${ligne('Solde (' + (100 - pctAcompte(c)) + ' %)', fmtEur(montantSolde(c)))}
+    <div class="fsep"></div>
+    ${ligne('Déjà payé', fmtEur(paye))}
+    ${ligne('Reste à payer', fmtEur(reste), true)}
+    <div class="fsep"></div>
+    <div class="frow"><span>Statut du dossier</span>${pill(f.paiementStatut)}</div>
+  </div>
+
+  <div class="block-title">Statuts des documents</div>
+  <div class="form-grid">
+    <div class="field"><label>Devis</label><select onchange="App.setDocStatut('devisStatut',this.value)">
+      ${['brouillon','envoye','accepte','refuse'].map(s=>`<option value="${s}" ${f.devisStatut===s?'selected':''}>${LIB_STATUT[s]}</option>`).join('')}</select></div>
+    <div class="field"><label>Facture d'acompte</label><select onchange="App.setDocStatut('faStatut',this.value)">
+      ${['a_payer','payee'].map(s=>`<option value="${s}" ${f.faStatut===s?'selected':''}>${LIB_STATUT[s]}</option>`).join('')}</select></div>
+    <div class="field"><label>Facture de solde</label><select onchange="App.setDocStatut('fsStatut',this.value)">
+      ${['en_attente','a_payer','payee'].map(s=>`<option value="${s}" ${f.fsStatut===s?'selected':''}>${LIB_STATUT[s]}</option>`).join('')}</select></div>
+    <div class="field"><label>Facture globale</label><select onchange="App.setDocStatut('fStatut',this.value)">
+      ${['a_payer','payee'].map(s=>`<option value="${s}" ${f.fStatut===s?'selected':''}>${LIB_STATUT[s]}</option>`).join('')}</select></div>
+  </div>
+
+  <div class="block-title">Paiements</div>
+  <p style="color:var(--muted);font-size:12.5px;line-height:1.6;margin:0 0 12px">
+    ${FACT.stripe && FACT.stripe.actif
+      ? 'Stripe est activé : les boutons ouvrent le paiement en ligne.'
+      : "Stripe n'est pas encore connecté. Les boutons enregistrent le paiement manuellement (virement, espèces…). Le jour où vous renseignerez vos clés Stripe, ils déclencheront le paiement en ligne sans autre développement."}
+  </p>
+  <div class="fbtns">
+    <button class="btn neon sm" onclick="App.payer('acompte')">Régler l'acompte — ${fmtEur(montantAcompte(c))}</button>
+    <button class="btn ghost sm" onclick="App.payer('total')">Régler la totalité — ${fmtEur(totalTTC(c))}</button>
+    <button class="btn ghost sm" ${acomptePaye?'':'disabled title="Disponible après le paiement de l\'acompte"'}
+      onclick="App.payer('solde')">Régler le solde — ${fmtEur(montantSolde(c))}</button>
+    <button class="btn ghost sm" onclick="App.payer('echelonne')">Paiement en plusieurs fois</button>
+  </div>
+
+  ${histoP.length ? `<div class="block-title">Historique des paiements</div>
+  <div style="display:flex;flex-direction:column;gap:7px">
+    ${histoP.slice().reverse().map(p=>`<div class="frow"><span>${LIB_STATUT[p.type]||p.type} · ${dateFR(p.date)}${p.moyen?' · '+esc(p.moyen):''}</span><b>${fmtEur(p.montant)}</b></div>`).join('')}
+  </div>` : ''}
+
+  ${histoD.length ? `<div class="block-title">Historique des documents</div>
+  <div style="display:flex;flex-direction:column;gap:7px">
+    ${histoD.map(d=>`<div class="frow"><span>${esc(d.numero)} · ${DOC_DEFS[d.k].titre.toLowerCase()}${d.genere_le?' · '+dateFR(d.genere_le):''}</span><b>${fmtEur(d.montant)}</b></div>`).join('')}
+  </div>` : ''}
+  `;
+}
+
+/* ---------- Rubrique Documents (fiche client) ---------- */
+function blocDocuments(c){
+  const row = (kind) => {
+    const def = DOC_DEFS[kind], d = (c.documents || {})[kind];
+    return `<div class="docrow">
+      <div class="di">${ic(I.doc, 18)}</div>
+      <div style="min-width:0">
+        ${d ? `<div class="dn">${esc(def.titre)} <span class="dnum">${esc(d.numero||'')}</span></div>
+               <div class="ds">${(d.size/1024).toFixed(0)} Ko${d.genere_le?' · généré le '+dateFR(d.genere_le):''}</div>`
+            : `<div class="dn" style="color:var(--muted2)">${esc(def.titre)}</div>
+               <div class="ds">Pas encore généré</div>`}
+      </div>
+      <div class="da">${d
+        ? `<button class="linklike" onclick="App.ouvrirDocument('${kind}')">Ouvrir</button>
+           <button class="linklike" onclick="App.downloadDoc('${kind}')">Télécharger</button>
+           <button class="linklike" onclick="App.regenererDocument('${kind}')">Régénérer</button>
+           <button class="linklike" style="color:#ff8585" onclick="App.removeDoc('${kind}')">Supprimer</button>`
+        : `<button class="linklike" onclick="App.regenererDocument('${kind}')">Générer</button>`}</div>
+    </div>`;
+  };
+  return `
+  <div class="block-title" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+    <span>Documents</span>
+    <button class="btn neon sm" id="gen-docs" onclick="App.genererDocuments()">Générer les documents</button>
+  </div>
+  <p style="color:var(--muted);font-size:12.5px;line-height:1.6;margin:0 0 12px">
+    Génère le devis, la facture d'acompte (${pctAcompte(c)} %), la facture de solde (${100-pctAcompte(c)} %)
+    et la facture globale, à partir des informations de la fiche. Les numéros sont attribués automatiquement.
+  </p>
+  ${['devis','factureAcompte','factureSolde','factureGlobale'].map(row).join('')}`;
+}
+
+/* ---------- Paramètres de facturation (administration) ---------- */
+function renderFacturation(){
+  const E = FACT.entreprise, B = FACT.banque, T = FACT.textes;
+  const f = (id, lab, val, ph = '') =>
+    `<div class="field"><label>${lab}</label><input id="${id}" value="${esc(val||'')}" placeholder="${esc(ph)}"></div>`;
+  const na = (id, lab, val, ph = '') =>
+    `<div class="field" style="grid-column:1/-1"><label>${lab}</label><textarea id="${id}" rows="3" placeholder="${esc(ph)}">${esc(val||'')}</textarea></div>`;
+  return `<div class="content">
+    <div class="page-head"><h2>Facturation</h2>
+      <p style="color:var(--muted);margin:6px 0 0">Ces informations apparaissent sur tous vos devis et factures.</p></div>
+
+    <div class="card" style="padding:24px;margin-bottom:16px">
+      <div class="sec-title">Coordonnées de l'entreprise</div>
+      <div class="form-grid">
+        ${f('fx-nom','Nom commercial',E.nom)}
+        ${f('fx-logo','Logo (adresse de l\'image)',E.logoUrl,'https://…')}
+        ${f('fx-adresse','Adresse',E.adresse)}
+        ${f('fx-cp','Code postal',E.codePostal)}
+        ${f('fx-ville','Ville',E.ville)}
+        ${f('fx-pays','Pays',E.pays)}
+        ${f('fx-tel','Téléphone',E.telephone)}
+        ${f('fx-email','E-mail',E.email)}
+        ${f('fx-web','Site web',E.siteWeb)}
+        ${f('fx-siren','SIREN',E.siren)}
+        ${f('fx-tva','N° TVA (si assujetti)',E.tva)}
+      </div>
+    </div>
+
+    <div class="card" style="padding:24px;margin-bottom:16px">
+      <div class="sec-title">Coordonnées bancaires</div>
+      <div class="form-grid">
+        ${f('fx-titulaire','Titulaire du compte',B.titulaire)}
+        ${f('fx-iban','IBAN',B.iban,'FR76 …')}
+        ${f('fx-bic','BIC',B.bic)}
+      </div>
+    </div>
+
+    <div class="card" style="padding:24px;margin-bottom:16px">
+      <div class="sec-title">Règles de facturation</div>
+      <div class="form-grid">
+        <div class="field"><label>Taux d'acompte (%)</label><input id="fx-acompte" type="number" min="0" max="100" value="${esc(FACT.acomptePct)}"></div>
+        <div class="field"><label>Validité du devis (jours)</label><input id="fx-validite" type="number" min="1" value="${esc(FACT.delaiValidite)}"></div>
+        <div class="field"><label>Délai de paiement (jours)</label><input id="fx-paiement" type="number" min="1" value="${esc(FACT.delaiPaiement)}"></div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:24px;margin-bottom:16px">
+      <div class="sec-title">Numérotation</div>
+      <p style="color:var(--muted);font-size:12.5px;line-height:1.6;margin:0 0 14px">
+        Numéro du <b>dernier</b> document émis. Le suivant prendra le numéro juste après.
+        Laissez vide pour ne pas modifier.
+      </p>
+      <div class="form-grid">
+        <div class="field"><label>Devis — D/</label><input id="fx-n-d" type="number" min="0" placeholder="ex. 19"></div>
+        <div class="field"><label>Facture d'acompte — FA/</label><input id="fx-n-fa" type="number" min="0" placeholder="ex. 12"></div>
+        <div class="field"><label>Facture de solde — FS/</label><input id="fx-n-fs" type="number" min="0" placeholder="ex. 6"></div>
+        <div class="field"><label>Facture — F/</label><input id="fx-n-f" type="number" min="0" placeholder="ex. 16"></div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:24px;margin-bottom:16px">
+      <div class="sec-title">Textes des documents</div>
+      <div class="form-grid">
+        ${na('fx-t-devis','Texte d\'introduction des devis',T.devis)}
+        ${na('fx-t-facture','Texte d\'introduction des factures',T.facture)}
+        ${na('fx-t-cgv','Conditions générales',T.cgv)}
+        ${na('fx-t-mentions','Mentions légales',T.mentions)}
+      </div>
+    </div>
+
+    <div class="card" style="padding:24px;margin-bottom:16px">
+      <div class="sec-title">Paiement en ligne (Stripe)</div>
+      <p style="color:var(--muted);font-size:12.5px;line-height:1.6;margin:0 0 14px">
+        Laissez désactivé tant que vous n'avez pas de compte Stripe. Les boutons de paiement
+        enregistrent alors les règlements manuellement. Le jour où vous activerez Stripe,
+        ils déclencheront le paiement en ligne — aucun développement supplémentaire ne sera nécessaire.
+      </p>
+      <div class="form-grid">
+        ${f('fx-stripe-pk','Clé publique Stripe',FACT.stripe.publishableKey,'pk_live_…')}
+        <div class="field"><label>Activer le paiement en ligne</label>
+          <label style="display:flex;align-items:center;gap:9px;color:var(--muted);font-size:13px;padding-top:8px">
+            <input type="checkbox" id="fx-stripe-actif" ${FACT.stripe.actif?'checked':''}> Stripe actif
+          </label></div>
+      </div>
+    </div>
+
+    <button class="btn neon" onclick="App.factSave()">Enregistrer les paramètres</button>
+    <span id="fact-msg" style="margin-left:12px;font-size:13px"></span>
+  </div>`;
+}
+
+/* ---------- Documents dans l'espace client ---------- */
+function documentsClientBlock(c){
+  const dispo = ['devis','factureAcompte','factureSolde','factureGlobale']
+    .filter(k => c.documents && c.documents[k]);
+  if (!dispo.length) return '';
+  return `<div class="card" style="padding:22px;margin-bottom:18px">
+    <div class="sec-title">Mes documents</div>
+    ${dispo.map(k => {
+      const d = c.documents[k], def = DOC_DEFS[k];
+      return `<div class="docrow">
+        <div class="di">${ic(I.doc,18)}</div>
+        <div style="min-width:0"><div class="dn">${esc(def.titre)} <span class="dnum">${esc(d.numero||'')}</span></div>
+          <div class="ds">${esc(d.name||'')}</div></div>
+        <div class="da">
+          <button class="btn ghost sm" onclick="App.pubOpen('${c.token}','${k}')">Aperçu</button>
+          <button class="btn neon sm" onclick="App.pubDownload('${c.token}','${k}')">Télécharger</button>
+        </div></div>`;
+    }).join('')}
+  </div>`;
+}
+
+async function pubOpen(token, key){
+  const c = state.publicData && state.publicData.client ? state.publicData.client : null;
+  const d = c && c.documents && c.documents[key];
+  if (!d) return;
+  const w = window.open(); if (!w){ toast('Autorisez les fenêtres pop-up'); return; }
+  w.document.write('<iframe src="' + d.data + '" style="border:0;width:100%;height:100%;position:absolute;inset:0"></iframe>');
+}
+
+
 function renderClientPublic(c){
+  state.publicData={client:c};
   const F=FORMULES[c.formule]||{};
   const tile=(icon,label,val)=>`<div class="info-tile card"><div class="il">${ic(icon,15)} ${label}</div><div class="iv">${val}</div></div>`;
-  const docs=[['devis','Devis'],['factureAcompte','Facture acompte'],['factureSolde','Facture solde']].filter(([k])=>c.documents&&c.documents[k]);
   return `${svgDefs}<div class="content" style="max-width:820px;margin:0 auto"><div class="portal">
     ${PUB_HEADER}
     <div class="hero-card card">
@@ -1340,14 +2018,10 @@ function renderClientPublic(c){
     ${c.notes?`<div class="card" style="padding:20px;margin-bottom:18px"><div class="sec-title">Remarques</div>
       <div style="color:var(--muted);white-space:pre-wrap;line-height:1.5">${esc(c.notes)}</div></div>`:''}
     ${musiquesBlock(c)}
-    <div class="card" style="padding:22px">
+    ${documentsClientBlock(c) || `<div class="card" style="padding:22px">
       <div class="sec-title">Mes documents</div>
-      ${docs.length?docs.map(([k,label])=>{const d=c.documents[k];return `
-        <div class="docrow"><div class="di">${ic(I.doc,18)}</div>
-          <div><div class="dn">${esc(label)}</div><div class="ds">${esc(d.name)}</div></div>
-          <div class="da"><button class="btn neon sm" onclick="App.pubDownload('${c.token}','${k}')">Télécharger</button></div>
-        </div>`;}).join(''):`<div class="empty">Vos documents apparaîtront ici dès qu'ils seront disponibles.</div>`}
-    </div>
+      <div class="empty">Vos documents apparaîtront ici dès qu'ils seront disponibles.</div>
+    </div>`}
     <div style="text-align:center;margin-top:26px;color:var(--muted2);font-size:13px">
       Une question ? <a href="mailto:lepetitbooth@gmail.com" style="color:var(--violet)">lepetitbooth@gmail.com</a> · 06 938 138 58</div>
     ${adminBack}
@@ -1498,8 +2172,9 @@ try{ if(window.parent && window.parent !== window) window.parent.postMessage({ t
 init();
 
 /* public api */
-return {doAdminLogin,logout,go,toggleNav,
+return {doAdminLogin,logout,go,toggleNav,tmplEdit,
   openClient,closeModal,saveClient,deleteClient,onFormule,uploadDoc,downloadDoc,removeDoc,
+  genererDocuments,regenererDocument,ouvrirDocument,setDocStatut,payer,factSave,pubOpen,
   optAdd,optRemove,optName,optPrice,recalcTotal,
   setPrestMode,asgAdd,asgRemove,asgName,asgHd,asgHf,asgMontant,
   openPrest,closePrest,savePrest,deletePrest,

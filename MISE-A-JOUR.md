@@ -1,14 +1,21 @@
 # Mise à jour — ce qu'il faut faire
 
-## 1. Exécuter la migration (une fois)
+## 1. Exécuter le SQL (une fois)
 
-Supabase → **SQL Editor** → collez tout `supabase-migration.sql` → **Run**.
+Supabase → **SQL Editor** → nouvelle requête → collez **`supabase-TOUT-EN-UN.sql`** → **Run**.
 
-> **Vos données sont préservées.** Ce script n'utilise que des ajouts
-> (`create ... if not exists`, `add column if not exists`, `create or replace`).
-> Il ne contient **aucun** `drop table`, `delete` ni `truncate`.
-> Vos clients, réservations, avis et médias existants restent intacts.
-> Il est ré-exécutable sans risque.
+> **Un seul fichier suffit.** Il contient tout : fondations du site, CRM,
+> avis par lien, synchronisation du calendrier, musiques client,
+> statistiques et facturation.
+>
+> Les fichiers `supabase-schema.sql`, `supabase-migration.sql` et
+> `supabase-facturation.sql` restent fournis à titre de référence, mais
+> vous n'avez **pas** besoin de les exécuter séparément.
+>
+> **Vos données sont préservées.** Uniquement des ajouts
+> (`create ... if not exists`, `add column if not exists`,
+> `create or replace`). Aucun `drop table`, `delete` ni `truncate`.
+> Ré-exécutable sans risque, même si vous avez déjà lancé d'autres scripts.
 
 ## 2. Redéployer
 
@@ -96,3 +103,62 @@ clairement (ce n'est pas une panne : la mesure démarre à la première visite).
 
 En cas de souci, ouvrez la console du navigateur (F12) : les messages
 `[CMS]` en violet indiquent précisément ce qui est chargé ou ce qui bloque.
+
+---
+
+# Module facturation (nouveau)
+
+## À exécuter
+
+Supabase → SQL Editor → `supabase-facturation.sql` → **Run**.
+Non destructif, ré-exécutable.
+
+## Comment ça marche
+
+**1. Réglages** — onglet **Facturation** dans le CRM : coordonnées, logo,
+IBAN/BIC, SIREN, mentions légales, textes des devis et factures, conditions
+générales, délais, taux d'acompte (35 % par défaut), numéros de départ.
+
+**2. Fiche client** — nouveaux champs : adresse, code postal, ville, pays
+(France par défaut), frais de déplacement et remise.
+
+**3. Génération** — bouton **« Générer les documents »** : crée d'un coup le
+devis, la facture d'acompte (35 %), la facture de solde (65 %) et la facture
+globale. Chaque PDF reprend automatiquement le client, la prestation, les
+options, les frais de déplacement, la remise, les montants et les dates.
+
+**4. Numérotation automatique** — D/20, FA/13, FS/7, F/17… Les numéros sont
+attribués par la base de façon atomique : jamais de doublon, jamais de saisie
+manuelle. Une régénération conserve le numéro d'origine.
+
+**5. Archivage** — les documents s'affichent dans la fiche client. Vous pouvez
+les **ouvrir**, **télécharger**, **régénérer** ou **supprimer**.
+
+**6. Espace client** — le client retrouve ses documents dans son lien privé,
+avec aperçu et téléchargement.
+
+**7. Récapitulatif financier** — montant total, acompte, solde, déjà payé,
+reste à payer, statut du dossier, historique des paiements et des documents.
+
+**8. Statuts** — devis (brouillon/envoyé/accepté/refusé), facture d'acompte
+(à payer/payée), facture de solde (en attente/à payer/payée), facture globale
+(à payer/payée), paiement (aucun/acompte/complet/plusieurs fois/remboursé).
+
+**9. Paiements** — quatre boutons : acompte (35 %), totalité (100 %), solde
+(65 %, actif seulement si l'acompte est payé), et paiement en plusieurs fois.
+
+> **Stripe n'est pas connecté**, comme demandé. Aujourd'hui, ces boutons
+> enregistrent le règlement manuellement (virement, espèces…) et mettent à
+> jour tous les statuts. Le jour où vous renseignerez vos clés Stripe dans
+> l'onglet Facturation et cocherez « Stripe actif », les mêmes boutons
+> ouvriront le paiement en ligne. La table `paiements` et la fonction
+> `paiement_enregistrer` attendent déjà les identifiants Stripe : il ne
+> restera qu'à brancher la passerelle, sans rien refaire.
+
+## À savoir
+
+- Les PDF sont générés **dans votre navigateur** (aucun service externe) et
+  stockés dans la fiche client. Comptez 30 à 60 Ko par document.
+- La première génération télécharge la librairie PDF : prévoyez une connexion
+  active la première fois.
+- Autorisez les **fenêtres pop-up** pour l'aperçu des documents.
