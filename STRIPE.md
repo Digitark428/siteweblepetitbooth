@@ -127,3 +127,20 @@ Faites un vrai test à petit montant :
 
 Si le paiement n'aboutit pas, regardez Vercel → **Deployments → Functions →
 Logs** : l'erreur exacte y figure.
+
+---
+
+# Si le déploiement échoue
+
+**« Found invalid Node.js Version »** — Vercel → Settings → **Node.js Version**
+→ choisissez **20.x** (ou laissez la valeur par défaut). Le projet fonctionne
+avec Node 18, 20, 22 et 24 ; ce message signifie simplement qu'un moteur
+incompatible avait été imposé. Redéployez ensuite.
+
+**Les fonctions `/api` ne répondent pas (404)** — vérifiez que le dossier
+`api/` est bien présent à la racine du dépôt GitHub, à côté de `package.json`.
+
+**« Stripe n'est pas configuré sur le serveur »** — la variable
+`STRIPE_SECRET_KEY` manque dans Vercel, ou le projet n'a pas été redéployé
+après son ajout. Les variables ne sont prises en compte qu'au déploiement
+suivant.
