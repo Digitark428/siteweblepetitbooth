@@ -1,4 +1,7 @@
 {
   "buildCommand": "npm run build",
-  "outputDirectory": "dist-site"
+  "outputDirectory": "dist-site",
+  "functions": {
+    "api/*.js": { "runtime": "@vercel/node@3.2.0", "maxDuration": 15 }
+  }
 }

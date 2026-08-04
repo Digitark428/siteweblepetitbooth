@@ -612,6 +612,8 @@ function logout(){ state.user=null; state.adminPw=null; state.route='dashboard';
 }
 function enterApp(){
   factLoad();
+  chargerPaiements();
+  if(!window.__paieTimer) window.__paieTimer=setInterval(chargerPaiements, 60000);
   const cc=document.getElementById('crm-connecting'); if(cc)cc.style.display='none';
   $('#public').innerHTML=''; $('#public').style.display='none';
   $('#login').style.display='none'; $('#app').style.display='block';
@@ -667,6 +669,57 @@ function topAction(html){$('#top-actions').innerHTML=html;}
 /* =========================================================
    DASHBOARD
 ========================================================= */
+
+/* ---------- Notification des paiements Stripe ---------- */
+async function chargerPaiements(){
+  if(!supa) return;
+  try{
+    const { data, error } = await supa.from('paiements_recents').select('*').limit(12);
+    if(!error && data){
+      state.paiements = data;
+      majBadgePaiements();
+    }
+  }catch(e){ /* silencieux */ }
+}
+
+function majBadgePaiements(){
+  const nb = (state.paiements||[]).filter(p=>!p.vu).length;
+  const el = document.getElementById('badge-paiements');
+  if(el){ el.textContent = nb; el.style.display = nb ? 'inline-flex' : 'none'; }
+  if(nb && state.route==='dashboard') render();
+}
+
+async function marquerPaiementsVus(){
+  try{
+    if(supa) await supa.rpc('paiements_marquer_vus');
+    (state.paiements||[]).forEach(p=>p.vu=true);
+    majBadgePaiements(); render();
+  }catch(e){ console.error(e); }
+}
+
+function blocPaiementsRecents(){
+  const list = state.paiements || [];
+  if(!list.length) return '';
+  const nonVus = list.filter(p=>!p.vu).length;
+  const lib = { acompte:'Acompte', solde:'Solde', total:'Règlement intégral' };
+  return `<div class="card" style="padding:22px;margin-bottom:18px${nonVus?';border-color:rgba(62,207,142,.5)':''}">
+    <div class="sec-title" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+      <span>${nonVus?`🔔 ${nonVus} nouveau${nonVus>1?'x':''} paiement${nonVus>1?'s':''}`:'Paiements récents'}</span>
+      ${nonVus?`<button class="btn ghost sm" onclick="App.marquerPaiementsVus()">Marquer comme lus</button>`:''}
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${list.slice(0,8).map(p=>`
+        <div class="frow" style="${p.vu?'':'background:rgba(62,207,142,.07);border-radius:9px;padding:8px 10px'}">
+          <span>${p.vu?'':'<b style="color:var(--c-confirme)">● </b>'}${esc(p.client||'Client')} · ${lib[p.type]||p.type}
+            ${p.statut==='rembourse'?' · <span style="color:#ff9f43">remboursé</span>':''}
+            ${p.moyen==='stripe'?' · carte':''}
+            <span style="color:var(--muted2)"> · ${p.paye_at?dateFR(p.paye_at):dateFR(p.created_at)}</span></span>
+          <b style="color:${p.statut==='rembourse'?'#ff9f43':'var(--c-confirme)'}">${fmtEur(p.montant)}</b>
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
+
 function viewDashboard(){
   const cl=state.clients;
   const devis=cl.filter(c=>['devis','attente'].includes(c.status)).length;
@@ -679,7 +732,7 @@ function viewDashboard(){
   const next=up[0];
   const stat=(icon,val,lbl,small)=>`<div class="stat card"><div class="ic">${ic(icon)}</div>
     <div class="val ${small?'small':''}">${val}</div><div class="lbl">${lbl}</div></div>`;
-  return `
+  return `${blocPaiementsRecents()}
   <div class="stats">
     ${stat(I.doc,devis,'Devis envoyés / en attente')}
     ${stat(I.check,conf,'Prestations confirmées')}
@@ -1960,6 +2013,19 @@ function renderFacturation(){
 /* ---------- Paiement depuis l'espace client ---------- */
 function paiementsClientBlock(c){
   if (totalTTC(c) <= 0) return '';
+  // Retour depuis Stripe : message de confirmation
+  const retour = (location.hash.split('?')[1] || '');
+  const bandeau = /paiement=ok/.test(retour)
+    ? `<div class="card" style="padding:18px;margin-bottom:14px;border-color:rgba(62,207,142,.45);background:rgba(62,207,142,.08)">
+         <b style="color:var(--c-confirme)">✅ Merci, votre paiement a bien été reçu.</b>
+         <div style="color:var(--muted);font-size:13px;margin-top:6px">
+           Votre reçu vous a été envoyé par e-mail par Stripe. Cette page se met à jour dans quelques instants.
+         </div></div>`
+    : (/paiement=annule/.test(retour)
+      ? `<div class="card" style="padding:18px;margin-bottom:14px;border-color:rgba(245,197,66,.4)">
+           <b style="color:var(--c-devis)">Paiement annulé</b>
+           <div style="color:var(--muted);font-size:13px;margin-top:6px">Aucun montant n'a été débité. Vous pouvez réessayer quand vous le souhaitez.</div>
+         </div>` : '');
   const f = factuOf(c);
   const acomptePaye = f.faStatut === 'payee' || f.paiementStatut === 'complet';
   const toutPaye = f.paiementStatut === 'complet';
@@ -1967,7 +2033,7 @@ function paiementsClientBlock(c){
   const B = FACT.banque;
 
   if (toutPaye){
-    return `<div class="card" style="padding:22px;margin-bottom:18px">
+    return bandeau + `<div class="card" style="padding:22px;margin-bottom:18px">
       <div class="sec-title">Paiement</div>
       <div class="frow"><span>Montant total</span><b>${fmtEur(totalTTC(c))}</b></div>
       <div class="frow"><span>Réglé</span><b style="color:var(--c-confirme)">${fmtEur(paye)}</b></div>
@@ -1981,7 +2047,7 @@ function paiementsClientBlock(c){
       ${actif?'':'disabled'} onclick="App.payerClient('${type}')"
       ${aide?`title="${esc(aide)}"`:''}>${label} — ${fmtEur(montant)}</button>`;
 
-  return `<div class="card" style="padding:22px;margin-bottom:18px">
+  return bandeau + `<div class="card" style="padding:22px;margin-bottom:18px">
     <div class="sec-title">Régler ma prestation</div>
     <div class="fbox" style="margin-bottom:14px">
       <div class="frow"><span>Montant total</span><b>${fmtEur(totalTTC(c))}</b></div>
@@ -1996,42 +2062,43 @@ function paiementsClientBlock(c){
         ? btn('solde', 'Régler le solde', montantSolde(c), true)
         : btn('solde', 'Régler le solde', montantSolde(c), false, "Disponible après le règlement de l'acompte")}
       ${acomptePaye ? '' : btn('total', 'Régler la totalité', totalTTC(c), true)}
-      ${acomptePaye ? '' : `<button class="btn ghost sm" onclick="App.payerClient('echelonne')">Payer en plusieurs fois</button>`}
     </div>
     <p style="color:var(--muted);font-size:12.5px;line-height:1.6;margin:14px 0 0">
-      ${FACT.stripe && FACT.stripe.actif
-        ? 'Paiement sécurisé par carte bancaire.'
-        : `Le paiement en ligne arrive très prochainement.${(B.iban? ` En attendant, vous pouvez régler par virement :<br><b style="color:var(--text)">IBAN ${esc(B.iban)}</b>${B.bic?` · BIC ${esc(B.bic)}`:''}${B.titulaire?`<br>Titulaire : ${esc(B.titulaire)}`:''}` : ' Nous vous transmettrons les coordonnées bancaires.')}`}
+      💳 Vous pouvez régler votre commande en plusieurs fois si votre carte bancaire est éligible.
+      Cette option vous sera proposée directement et automatiquement lors du paiement.
     </p>
+    <p style="color:var(--muted2);font-size:12px;line-height:1.6;margin:8px 0 0">
+      Paiement sécurisé par Stripe. Nous n'avons jamais accès à vos données bancaires.${
+        B.iban ? ` Vous préférez le virement ? IBAN <b style="color:var(--muted)">${esc(B.iban)}</b>.` : ''}
+    </p>
+    <div id="pay-err" style="color:#ff8585;font-size:12.5px;margin-top:10px"></div>
   </div>`;
 }
 
 async function payerClient(type){
   const c = state.publicData && state.publicData.client;
   if (!c) return;
-  const montants = { acompte: montantAcompte(c), solde: montantSolde(c), total: totalTTC(c), echelonne: totalTTC(c) };
-  const montant = montants[type] || 0;
+  const err = document.getElementById('pay-err');
+  const boutons = document.querySelectorAll('.fbtns .btn');
+  const remettre = () => boutons.forEach(b => { b.disabled = false; b.style.opacity = ''; });
+  boutons.forEach(b => { b.disabled = true; b.style.opacity = '.6'; });
+  if (err) err.textContent = 'Redirection vers le paiement sécurisé…';
 
-  // Stripe activé : ouverture du paiement en ligne.
-  if (FACT.stripe && FACT.stripe.actif && FACT.stripe.publishableKey){
-    if (typeof window.stripeCheckout === 'function'){
-      return window.stripeCheckout({ client: c, type, montant, token: c.token });
-    }
-    alert("Le paiement en ligne est en cours d'activation. Merci de réessayer un peu plus tard.");
-    return;
+  try {
+    // Le montant est recalculé et vérifié côté serveur : on n'envoie que
+    // le lien privé et le type de règlement.
+    const r = await fetch('/api/stripe-checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: c.token, type, retour: baseUrl() })
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || !data.url) throw new Error(data.error || "Le paiement n'a pas pu être ouvert.");
+    window.location.href = data.url;
+  } catch (e) {
+    remettre();
+    if (err) err.textContent = e.message || "Le paiement est momentanément indisponible. Réessayez ou contactez-nous.";
   }
-
-  // Sans Stripe : on indique la marche à suivre (aucun paiement enregistré ici).
-  const B = FACT.banque, E = FACT.entreprise;
-  const lib = { acompte:"l'acompte", solde:'le solde', total:'la totalité', echelonne:'un paiement en plusieurs fois' }[type];
-  alert(
-    "Paiement en ligne bientôt disponible\n\n" +
-    "Pour régler " + lib + " (" + fmtEur(montant) + ") dès maintenant :\n\n" +
-    (B.iban ? "Virement bancaire\nIBAN : " + B.iban + (B.bic ? "\nBIC : " + B.bic : "") +
-              (B.titulaire ? "\nTitulaire : " + B.titulaire : "") + "\n\n" : "") +
-    (type === 'echelonne' ? "Pour un paiement en plusieurs fois, contactez-nous :\n" : "Une question ? Contactez-nous :\n") +
-    (E.telephone || '') + (E.email ? "\n" + E.email : "")
-  );
 }
 
 /* ---------- Documents dans l'espace client ---------- */
@@ -2162,7 +2229,17 @@ function invalidLink(){
 async function route(){
   const m=(location.hash||'').match(/^#\/(client|prestataire)\/(.+)$/);
   if(m){
-    if(m[1]==='client'){ await factLoad(); const c=await fetchClientPublic(m[2]); return c?showPublic(renderClientPublic(c)):invalidLink(); }
+    if(m[1]==='client'){
+      await factLoad();
+      const c=await fetchClientPublic(m[2]);
+      if(!c) return invalidLink();
+      showPublic(renderClientPublic(c));
+      // Retour de Stripe : le webhook met un instant à confirmer, on relit la fiche.
+      if(/paiement=ok/.test(location.hash)){
+        setTimeout(async()=>{ const f=await fetchClientPublic(m[2]); if(f) showPublic(renderClientPublic(f)); }, 4000);
+      }
+      return;
+    }
     const d=await fetchPrestPublic(m[2]); return (d&&d.prestataire)?showPublic(renderPrestatairePublic(d.prestataire, d.missions||[])):invalidLink();
   }
   // pas de token → administration
@@ -2249,7 +2326,7 @@ init();
 return {doAdminLogin,logout,go,toggleNav,tmplEdit,
   openClient,closeModal,saveClient,deleteClient,onFormule,uploadDoc,downloadDoc,removeDoc,
   genererDocuments,regenererDocument,ouvrirDocument,setDocStatut,factSave,pubOpen,
-  enregistrerReglement,payerClient,
+  enregistrerReglement,payerClient,marquerPaiementsVus,
   optAdd,optRemove,optName,optPrice,recalcTotal,
   setPrestMode,asgAdd,asgRemove,asgName,asgHd,asgHf,asgMontant,
   openPrest,closePrest,savePrest,deletePrest,
