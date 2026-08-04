@@ -144,16 +144,30 @@ reste à payer, statut du dossier, historique des paiements et des documents.
 (à payer/payée), facture de solde (en attente/à payer/payée), facture globale
 (à payer/payée), paiement (aucun/acompte/complet/plusieurs fois/remboursé).
 
-**9. Paiements** — quatre boutons : acompte (35 %), totalité (100 %), solde
-(65 %, actif seulement si l'acompte est payé), et paiement en plusieurs fois.
+**9. Paiements — côté client**
 
-> **Stripe n'est pas connecté**, comme demandé. Aujourd'hui, ces boutons
-> enregistrent le règlement manuellement (virement, espèces…) et mettent à
-> jour tous les statuts. Le jour où vous renseignerez vos clés Stripe dans
-> l'onglet Facturation et cocherez « Stripe actif », les mêmes boutons
-> ouvriront le paiement en ligne. La table `paiements` et la fonction
-> `paiement_enregistrer` attendent déjà les identifiants Stripe : il ne
-> restera qu'à brancher la passerelle, sans rien refaire.
+C'est le **client** qui règle, depuis son lien privé. Dans son espace, il voit
+le récapitulatif (total, acompte, solde, déjà réglé) et ses boutons :
+
+- **Régler l'acompte** (35 %)
+- **Régler la totalité** (100 %)
+- **Régler le solde** (65 %) — actif seulement une fois l'acompte réglé
+- **Payer en plusieurs fois**
+
+Une fois tout réglé, l'espace affiche simplement « Votre dossier est
+intégralement réglé ».
+
+**Côté administration**, vous n'avez plus de boutons « payer » : à la place,
+un bloc **« Enregistrer un règlement reçu »** pour les paiements hors ligne
+(virement, espèces, chèque). Vous choisissez le type et le moyen, et les
+statuts se mettent à jour automatiquement.
+
+> **Stripe n'est pas connecté**, comme demandé. Aujourd'hui, les boutons du
+> client affichent vos coordonnées bancaires pour un virement (celles saisies
+> dans l'onglet Facturation). Le jour où vous renseignerez vos clés Stripe et
+> cocherez « Stripe actif », les mêmes boutons ouvriront le paiement par carte.
+> La table `paiements` et la fonction `paiement_enregistrer` attendent déjà les
+> identifiants Stripe : il ne restera qu'à brancher la passerelle.
 
 ## À savoir
 

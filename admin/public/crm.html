@@ -1714,30 +1714,16 @@ async function setDocStatut(champ, valeur){
   try { await dbSaveClient(c); renderModal(); } catch (e){ console.error(e); }
 }
 
-/* ---------- Paiements (structure prête pour Stripe) ---------- */
-async function payer(type){
+/* ---------- Enregistrement manuel d'un règlement (admin) ---------- */
+async function enregistrerReglement(){
   const c = findClient(state.modalClientId); if (!c) return;
-  const montants = { acompte: montantAcompte(c), solde: montantSolde(c), total: totalTTC(c), echelonne: totalTTC(c) };
+  const type = $('#pay-type')?.value || 'acompte';
+  const moyen = $('#pay-moyen')?.value || 'virement';
+  const montants = { acompte: montantAcompte(c), solde: montantSolde(c), total: totalTTC(c) };
   const montant = montants[type] || 0;
-
-  if (FACT.stripe && FACT.stripe.actif && FACT.stripe.publishableKey){
-    // Branchement Stripe : à activer le jour venu (une seule fonction à écrire).
-    toast('Redirection vers le paiement…');
-    if (typeof window.stripeCheckout === 'function'){
-      return window.stripeCheckout({ client: c, type, montant });
-    }
-    toast('Stripe est activé mais la passerelle n\'est pas encore déployée.');
-    return;
-  }
-
-  // Sans Stripe : enregistrement manuel (encaissement virement, espèces…)
-  const libelle = { acompte:"l'acompte", solde:'le solde', total:'la totalité', echelonne:'le paiement en plusieurs fois' }[type];
-  if (type === 'echelonne'){
-    toast('Le paiement en plusieurs fois sera disponible avec Stripe.');
-    return;
-  }
-  if (!confirm('Enregistrer ' + libelle + ' de ' + fmtEur(montant) + ' comme reçu ?\n\n(Stripe n\'étant pas encore connecté, le paiement est enregistré manuellement.)')) return;
-  await enregistrerPaiement(c, type, montant, 'manuel');
+  const lib = { acompte:"l'acompte", solde:'le solde', total:'la totalité' }[type];
+  if (!confirm('Enregistrer ' + lib + ' de ' + fmtEur(montant) + ' comme reçu (' + moyen + ') ?')) return;
+  await enregistrerPaiement(c, type, montant, moyen);
 }
 
 async function enregistrerPaiement(c, type, montant, moyen){
@@ -1812,19 +1798,28 @@ function blocFinancier(c){
       ${['a_payer','payee'].map(s=>`<option value="${s}" ${f.fStatut===s?'selected':''}>${LIB_STATUT[s]}</option>`).join('')}</select></div>
   </div>
 
-  <div class="block-title">Paiements</div>
+  <div class="block-title">Enregistrer un règlement reçu</div>
   <p style="color:var(--muted);font-size:12.5px;line-height:1.6;margin:0 0 12px">
-    ${FACT.stripe && FACT.stripe.actif
-      ? 'Stripe est activé : les boutons ouvrent le paiement en ligne.'
-      : "Stripe n'est pas encore connecté. Les boutons enregistrent le paiement manuellement (virement, espèces…). Le jour où vous renseignerez vos clés Stripe, ils déclencheront le paiement en ligne sans autre développement."}
+    Le client règle lui-même depuis son espace personnel (lien privé).
+    Utilisez ce bloc uniquement pour les règlements reçus <b>hors ligne</b> :
+    virement, espèces ou chèque. Les statuts se mettent à jour automatiquement.
   </p>
-  <div class="fbtns">
-    <button class="btn neon sm" onclick="App.payer('acompte')">Régler l'acompte — ${fmtEur(montantAcompte(c))}</button>
-    <button class="btn ghost sm" onclick="App.payer('total')">Régler la totalité — ${fmtEur(totalTTC(c))}</button>
-    <button class="btn ghost sm" ${acomptePaye?'':'disabled title="Disponible après le paiement de l\'acompte"'}
-      onclick="App.payer('solde')">Régler le solde — ${fmtEur(montantSolde(c))}</button>
-    <button class="btn ghost sm" onclick="App.payer('echelonne')">Paiement en plusieurs fois</button>
+  <div class="form-grid" style="margin-bottom:10px">
+    <div class="field"><label>Type de règlement</label>
+      <select id="pay-type">
+        <option value="acompte">Acompte (${pctAcompte(c)} %) — ${fmtEur(montantAcompte(c))}</option>
+        <option value="solde">Solde (${100-pctAcompte(c)} %) — ${fmtEur(montantSolde(c))}</option>
+        <option value="total">Totalité — ${fmtEur(totalTTC(c))}</option>
+      </select></div>
+    <div class="field"><label>Moyen</label>
+      <select id="pay-moyen">
+        <option value="virement">Virement</option>
+        <option value="especes">Espèces</option>
+        <option value="cheque">Chèque</option>
+        <option value="autre">Autre</option>
+      </select></div>
   </div>
+  <button class="btn ghost sm" onclick="App.enregistrerReglement()">Marquer comme reçu</button>
 
   ${histoP.length ? `<div class="block-title">Historique des paiements</div>
   <div style="display:flex;flex-direction:column;gap:7px">
@@ -1961,6 +1956,84 @@ function renderFacturation(){
   </div>`;
 }
 
+
+/* ---------- Paiement depuis l'espace client ---------- */
+function paiementsClientBlock(c){
+  if (totalTTC(c) <= 0) return '';
+  const f = factuOf(c);
+  const acomptePaye = f.faStatut === 'payee' || f.paiementStatut === 'complet';
+  const toutPaye = f.paiementStatut === 'complet';
+  const paye = dejaPaye(c), reste = resteAPayer(c);
+  const B = FACT.banque;
+
+  if (toutPaye){
+    return `<div class="card" style="padding:22px;margin-bottom:18px">
+      <div class="sec-title">Paiement</div>
+      <div class="frow"><span>Montant total</span><b>${fmtEur(totalTTC(c))}</b></div>
+      <div class="frow"><span>Réglé</span><b style="color:var(--c-confirme)">${fmtEur(paye)}</b></div>
+      <p style="color:var(--c-confirme);font-size:13.5px;margin:14px 0 0">
+        ✅ Votre dossier est intégralement réglé. Merci !</p>
+    </div>`;
+  }
+
+  const btn = (type, label, montant, actif, aide) => `
+    <button class="btn ${type==='acompte'&&!acomptePaye?'neon':'ghost'} sm"
+      ${actif?'':'disabled'} onclick="App.payerClient('${type}')"
+      ${aide?`title="${esc(aide)}"`:''}>${label} — ${fmtEur(montant)}</button>`;
+
+  return `<div class="card" style="padding:22px;margin-bottom:18px">
+    <div class="sec-title">Régler ma prestation</div>
+    <div class="fbox" style="margin-bottom:14px">
+      <div class="frow"><span>Montant total</span><b>${fmtEur(totalTTC(c))}</b></div>
+      <div class="frow"><span>Acompte (${pctAcompte(c)} %)</span><b>${fmtEur(montantAcompte(c))}</b></div>
+      <div class="frow"><span>Solde (${100-pctAcompte(c)} %)</span><b>${fmtEur(montantSolde(c))}</b></div>
+      ${paye ? `<div class="fsep"></div><div class="frow"><span>Déjà réglé</span><b style="color:var(--c-confirme)">${fmtEur(paye)}</b></div>
+      <div class="frow"><span>Reste à régler</span><b>${fmtEur(reste)}</b></div>` : ''}
+    </div>
+    <div class="fbtns">
+      ${acomptePaye ? '' : btn('acompte', "Régler l'acompte", montantAcompte(c), true)}
+      ${acomptePaye
+        ? btn('solde', 'Régler le solde', montantSolde(c), true)
+        : btn('solde', 'Régler le solde', montantSolde(c), false, "Disponible après le règlement de l'acompte")}
+      ${acomptePaye ? '' : btn('total', 'Régler la totalité', totalTTC(c), true)}
+      ${acomptePaye ? '' : `<button class="btn ghost sm" onclick="App.payerClient('echelonne')">Payer en plusieurs fois</button>`}
+    </div>
+    <p style="color:var(--muted);font-size:12.5px;line-height:1.6;margin:14px 0 0">
+      ${FACT.stripe && FACT.stripe.actif
+        ? 'Paiement sécurisé par carte bancaire.'
+        : `Le paiement en ligne arrive très prochainement.${(B.iban? ` En attendant, vous pouvez régler par virement :<br><b style="color:var(--text)">IBAN ${esc(B.iban)}</b>${B.bic?` · BIC ${esc(B.bic)}`:''}${B.titulaire?`<br>Titulaire : ${esc(B.titulaire)}`:''}` : ' Nous vous transmettrons les coordonnées bancaires.')}`}
+    </p>
+  </div>`;
+}
+
+async function payerClient(type){
+  const c = state.publicData && state.publicData.client;
+  if (!c) return;
+  const montants = { acompte: montantAcompte(c), solde: montantSolde(c), total: totalTTC(c), echelonne: totalTTC(c) };
+  const montant = montants[type] || 0;
+
+  // Stripe activé : ouverture du paiement en ligne.
+  if (FACT.stripe && FACT.stripe.actif && FACT.stripe.publishableKey){
+    if (typeof window.stripeCheckout === 'function'){
+      return window.stripeCheckout({ client: c, type, montant, token: c.token });
+    }
+    alert("Le paiement en ligne est en cours d'activation. Merci de réessayer un peu plus tard.");
+    return;
+  }
+
+  // Sans Stripe : on indique la marche à suivre (aucun paiement enregistré ici).
+  const B = FACT.banque, E = FACT.entreprise;
+  const lib = { acompte:"l'acompte", solde:'le solde', total:'la totalité', echelonne:'un paiement en plusieurs fois' }[type];
+  alert(
+    "Paiement en ligne bientôt disponible\n\n" +
+    "Pour régler " + lib + " (" + fmtEur(montant) + ") dès maintenant :\n\n" +
+    (B.iban ? "Virement bancaire\nIBAN : " + B.iban + (B.bic ? "\nBIC : " + B.bic : "") +
+              (B.titulaire ? "\nTitulaire : " + B.titulaire : "") + "\n\n" : "") +
+    (type === 'echelonne' ? "Pour un paiement en plusieurs fois, contactez-nous :\n" : "Une question ? Contactez-nous :\n") +
+    (E.telephone || '') + (E.email ? "\n" + E.email : "")
+  );
+}
+
 /* ---------- Documents dans l'espace client ---------- */
 function documentsClientBlock(c){
   const dispo = ['devis','factureAcompte','factureSolde','factureGlobale']
@@ -2018,6 +2091,7 @@ function renderClientPublic(c){
     ${c.notes?`<div class="card" style="padding:20px;margin-bottom:18px"><div class="sec-title">Remarques</div>
       <div style="color:var(--muted);white-space:pre-wrap;line-height:1.5">${esc(c.notes)}</div></div>`:''}
     ${musiquesBlock(c)}
+    ${paiementsClientBlock(c)}
     ${documentsClientBlock(c) || `<div class="card" style="padding:22px">
       <div class="sec-title">Mes documents</div>
       <div class="empty">Vos documents apparaîtront ici dès qu'ils seront disponibles.</div>
@@ -2088,7 +2162,7 @@ function invalidLink(){
 async function route(){
   const m=(location.hash||'').match(/^#\/(client|prestataire)\/(.+)$/);
   if(m){
-    if(m[1]==='client'){ const c=await fetchClientPublic(m[2]); return c?showPublic(renderClientPublic(c)):invalidLink(); }
+    if(m[1]==='client'){ await factLoad(); const c=await fetchClientPublic(m[2]); return c?showPublic(renderClientPublic(c)):invalidLink(); }
     const d=await fetchPrestPublic(m[2]); return (d&&d.prestataire)?showPublic(renderPrestatairePublic(d.prestataire, d.missions||[])):invalidLink();
   }
   // pas de token → administration
@@ -2174,7 +2248,8 @@ init();
 /* public api */
 return {doAdminLogin,logout,go,toggleNav,tmplEdit,
   openClient,closeModal,saveClient,deleteClient,onFormule,uploadDoc,downloadDoc,removeDoc,
-  genererDocuments,regenererDocument,ouvrirDocument,setDocStatut,payer,factSave,pubOpen,
+  genererDocuments,regenererDocument,ouvrirDocument,setDocStatut,factSave,pubOpen,
+  enregistrerReglement,payerClient,
   optAdd,optRemove,optName,optPrice,recalcTotal,
   setPrestMode,asgAdd,asgRemove,asgName,asgHd,asgHf,asgMontant,
   openPrest,closePrest,savePrest,deletePrest,

@@ -136,7 +136,11 @@ create table if not exists public.analytics_events (
 );
 create index if not exists analytics_type_idx on public.analytics_events (type, created_at desc);
 
-create or replace view public.stats_overview as
+-- On supprime la vue avant de la recréer : PostgreSQL refuse de
+-- remplacer une vue dont les colonnes ont changé. Une vue ne contient
+-- aucune donnée, cette suppression est donc sans effet sur vos tables.
+drop view if exists public.stats_overview;
+create view public.stats_overview as
   select
     count(*) filter (where type='visit' and created_at::date = current_date) as visiteurs_jour,
     count(*) filter (where type='visit' and date_trunc('month',created_at)=date_trunc('month',now())) as visiteurs_mois,
@@ -146,7 +150,11 @@ create or replace view public.stats_overview as
     count(*) filter (where type='audio_play') as ecoutes_audio
   from public.analytics_events;
 
-create or replace view public.dates_reservees as
+-- On supprime la vue avant de la recréer : PostgreSQL refuse de
+-- remplacer une vue dont les colonnes ont changé. Une vue ne contient
+-- aucune donnée, cette suppression est donc sans effet sur vos tables.
+drop view if exists public.dates_reservees;
+create view public.dates_reservees as
   select date_evenement, statut
   from public.calendar_events
   where date_evenement >= current_date;
@@ -415,7 +423,11 @@ $$;
 
 -- Vue publique fusionnée (remplace l'ancienne, même nom, mêmes colonnes :
 -- aucune modification à faire côté site).
-create or replace view public.dates_reservees as
+-- On supprime la vue avant de la recréer : PostgreSQL refuse de
+-- remplacer une vue dont les colonnes ont changé. Une vue ne contient
+-- aucune donnée, cette suppression est donc sans effet sur vos tables.
+drop view if exists public.dates_reservees;
+create view public.dates_reservees as
   select date_evenement, statut from (
     -- a) dates bloquées manuellement dans l'administration
     select ce.date_evenement, ce.statut
@@ -436,7 +448,11 @@ create or replace view public.dates_reservees as
 grant select on public.dates_reservees to anon, authenticated;
 
 -- Vue de contrôle : d'où vient chaque date bloquée (utile pour l'admin)
-create or replace view public.dates_bloquees_detail as
+-- On supprime la vue avant de la recréer : PostgreSQL refuse de
+-- remplacer une vue dont les colonnes ont changé. Une vue ne contient
+-- aucune donnée, cette suppression est donc sans effet sur vos tables.
+drop view if exists public.dates_bloquees_detail;
+create view public.dates_bloquees_detail as
   select 'Administration'::text as origine, ce.date_evenement, ce.statut, ce.ville as info
   from public.calendar_events ce where ce.date_evenement >= current_date
   union all
@@ -476,7 +492,11 @@ grant execute on function public.client_save_musiques(text,jsonb) to anon, authe
 -- ---------------------------------------------------------------------
 -- 4) STATISTIQUES — vue enrichie (visiteurs, conversion, demandes)
 -- ---------------------------------------------------------------------
-create or replace view public.stats_overview as
+-- On supprime la vue avant de la recréer : PostgreSQL refuse de
+-- remplacer une vue dont les colonnes ont changé. Une vue ne contient
+-- aucune donnée, cette suppression est donc sans effet sur vos tables.
+drop view if exists public.stats_overview;
+create view public.stats_overview as
   select
     (select count(*) from public.analytics_events where type='visit' and created_at::date = current_date)                                as visiteurs_jour,
     (select count(*) from public.analytics_events where type='visit' and date_trunc('month',created_at)=date_trunc('month',now()))       as visiteurs_mois,

@@ -125,7 +125,11 @@ create table if not exists public.analytics_events (
 );
 create index if not exists analytics_type_idx on public.analytics_events (type, created_at desc);
 
-create or replace view public.stats_overview as
+-- On supprime la vue avant de la recréer : PostgreSQL refuse de
+-- remplacer une vue dont les colonnes ont changé. Une vue ne contient
+-- aucune donnée, cette suppression est donc sans effet sur vos tables.
+drop view if exists public.stats_overview;
+create view public.stats_overview as
   select
     count(*) filter (where type='visit' and created_at::date = current_date) as visiteurs_jour,
     count(*) filter (where type='visit' and date_trunc('month',created_at)=date_trunc('month',now())) as visiteurs_mois,
@@ -135,7 +139,11 @@ create or replace view public.stats_overview as
     count(*) filter (where type='audio_play') as ecoutes_audio
   from public.analytics_events;
 
-create or replace view public.dates_reservees as
+-- On supprime la vue avant de la recréer : PostgreSQL refuse de
+-- remplacer une vue dont les colonnes ont changé. Une vue ne contient
+-- aucune donnée, cette suppression est donc sans effet sur vos tables.
+drop view if exists public.dates_reservees;
+create view public.dates_reservees as
   select date_evenement, statut
   from public.calendar_events
   where date_evenement >= current_date;
