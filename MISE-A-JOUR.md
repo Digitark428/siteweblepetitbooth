@@ -25,6 +25,39 @@ Envoyez le contenu du dossier sur GitHub → Vercel redéploie tout seul.
 
 # Ce qui a changé
 
+## Paiements Stripe — synchronisation automatique (dernière mise à jour)
+
+**Le problème** : après un paiement Stripe, la fiche affichait toujours
+« Reste à payer », les boutons restaient cliquables et le tableau de bord
+ne bougeait pas. La mise à jour reposait uniquement sur le *webhook*
+Stripe — s'il n'est pas déclaré ou échoue, rien n'est enregistré.
+
+**La solution** : au retour du paiement, l'espace client demande maintenant
+au serveur (`/api/stripe-verify`) de **relire la session directement chez
+Stripe** et d'enregistrer le paiement en base. Résultat, même sans webhook :
+
+- « Déjà payé » / « Reste à payer » se mettent à jour tout seuls ;
+- acompte payé → le bouton *Régler l'acompte* et *Régler la totalité*
+  disparaissent, seul *Régler le solde* reste actif ;
+- totalité ou solde payé → tous les boutons disparaissent, remplacés par
+  « ✅ Votre dossier est intégralement réglé » ;
+- le paiement apparaît dans la cloche 🔔 du tableau de bord et dans la
+  fiche CRM (statut « Acompte reçu » / « Paiement complet »), sans aucune
+  action manuelle.
+
+Aucun doublon possible : chaque session Stripe n'est comptée qu'une fois,
+même si le webhook confirme aussi de son côté.
+
+Corrections techniques : la configuration du webhook (`bodyParser: false`)
+était écrasée par l'export du handler (corrigé) ; le serveur refuse
+désormais un acompte déjà payé ou une « totalité » alors que l'acompte est
+déjà réglé.
+
+> **Rien à faire de plus** si le SQL `supabase-TOUT-EN-UN.sql` a déjà été
+> exécuté (il contient déjà `stripe_paiement_confirme`). Sinon, exécutez-le
+> une fois (étape 1 ci-dessus). Le webhook (STRIPE.md, étape 3) reste
+> recommandé en secours, mais n'est plus indispensable.
+
 ## Partie publique
 
 **Compteur d'événements** — le nombre et le texte se modifient dans

@@ -2101,6 +2101,36 @@ async function payerClient(type){
   }
 }
 
+/* ---------- Retour de Stripe : confirmation + rafraîchissement ----------
+   L'adresse de retour contient l'identifiant de la session Stripe.
+   On demande au serveur (/api/stripe-verify) de relire cette session chez
+   Stripe et d'enregistrer le paiement en base — c'est idempotent, donc
+   sans conflit avec le webhook. Puis on relit la fiche jusqu'à ce que le
+   paiement apparaisse : statuts, montants et boutons se mettent à jour. */
+async function confirmerRetourStripe(token){
+  const q = (location.hash.split('?')[1] || '');
+  const session = (q.match(/session=([^&]+)/) || [])[1] || null;
+  if (session){
+    try {
+      await fetch('/api/stripe-verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session: decodeURIComponent(session), token })
+      });
+    } catch (_){ /* pas grave : le webhook prendra le relais */ }
+  }
+  // Plusieurs relectures : l'enregistrement peut mettre quelques secondes.
+  for (const delai of [300, 2500, 6000, 12000]){
+    await new Promise(r => setTimeout(r, delai));
+    const f = await fetchClientPublic(token);
+    if (f){
+      showPublic(renderClientPublic(f));
+      const fx = f.factu || {};
+      if (fx.paiementStatut && fx.paiementStatut !== 'aucun') break;
+    }
+  }
+}
+
 /* ---------- Documents dans l'espace client ---------- */
 function documentsClientBlock(c){
   const dispo = ['devis','factureAcompte','factureSolde','factureGlobale']
@@ -2236,9 +2266,10 @@ async function route(){
       const c=await fetchClientPublic(m[2]);
       if(!c) return invalidLink();
       showPublic(renderClientPublic(c));
-      // Retour de Stripe : le webhook met un instant à confirmer, on relit la fiche.
+      // Retour de Stripe : on vérifie la session côté serveur puis on
+      // relit la fiche jusqu'à ce que le paiement soit enregistré.
       if(/paiement=ok/.test(location.hash)){
-        setTimeout(async()=>{ const f=await fetchClientPublic(m[2]); if(f) showPublic(renderClientPublic(f)); }, 4000);
+        confirmerRetourStripe(m[2]);
       }
       return;
     }
