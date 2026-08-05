@@ -2094,6 +2094,10 @@ async function payerClient(type){
     });
     const data = await r.json().catch(() => ({}));
     if (!r.ok || !data.url) throw new Error(data.error || "Le paiement n'a pas pu être ouvert.");
+    // On réactive les boutons juste avant de partir vers Stripe : ainsi, si
+    // le client revient avec « précédent », la page restaurée est utilisable.
+    remettre();
+    if (err) err.textContent = '';
     window.location.href = data.url;
   } catch (e) {
     remettre();
@@ -2145,7 +2149,6 @@ function documentsClientBlock(c){
         <div style="min-width:0"><div class="dn">${esc(def.titre)} <span class="dnum">${esc(d.numero||'')}</span></div>
           <div class="ds">${esc(d.name||'')}</div></div>
         <div class="da">
-          <button class="btn ghost sm" onclick="App.pubOpen('${c.token}','${k}')">Aperçu</button>
           <button class="btn neon sm" onclick="App.pubDownload('${c.token}','${k}')">Télécharger</button>
         </div></div>`;
     }).join('')}
@@ -2336,6 +2339,15 @@ async function init(){
   refreshDbBadge();
 }
 window.addEventListener('hashchange', route);
+
+/* Retour depuis Stripe avec le bouton « précédent » du navigateur : la page
+   est restaurée telle quelle depuis le cache, avec les boutons de paiement
+   encore désactivés (ils avaient été grisés au moment de la redirection).
+   On relit alors la fiche et on réaffiche : les boutons redeviennent actifs,
+   sauf si le paiement a réellement été effectué. */
+window.addEventListener('pageshow', (e) => {
+  if (e.persisted && /^#\/(client|prestataire)\//.test(location.hash || '')) route();
+});
 
 /* Réception de la session admin (transmise par la page d'administration
    qui contient le CRM). Aucune supposition sur le stockage : l'admin nous
