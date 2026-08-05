@@ -35,19 +35,28 @@ module.exports = async function handler(req, res) {
   try {
     const raw = await lireCorpsBrut(req);
 
+    // 1) Voie normale : vérification de la signature sur le corps brut.
     if (whSecret && req.headers['stripe-signature'] && raw) {
-      // Voie normale : vérification de la signature.
-      event = stripe.webhooks.constructEvent(raw, req.headers['stripe-signature'], whSecret);
-    } else {
-      // Filet de sécurité : on relit l'événement directement chez Stripe.
-      // Un événement inventé n'existerait pas côté Stripe et serait rejeté.
+      try {
+        event = stripe.webhooks.constructEvent(raw, req.headers['stripe-signature'], whSecret);
+      } catch (_) {
+        // Vercel transforme parfois le corps avant qu'on puisse le lire :
+        // la signature ne correspond plus. On bascule sur la voie 2.
+        event = null;
+      }
+    }
+
+    // 2) Voie de secours, tout aussi sûre : on relit l'événement DIRECTEMENT
+    // chez Stripe à partir de son identifiant. Un événement inventé n'existe
+    // pas côté Stripe et serait rejeté ici.
+    if (!event) {
       const recu = raw ? JSON.parse(raw.toString('utf8')) : req.body;
       if (!recu || !recu.id) throw new Error('Événement illisible.');
       event = await stripe.events.retrieve(recu.id);
     }
   } catch (err) {
     console.error('Webhook refusé :', err.message);
-    return res.status(400).send('Signature invalide : ' + err.message);
+    return res.status(400).send('Événement invalide : ' + err.message);
   }
 
   try {

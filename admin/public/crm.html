@@ -2227,7 +2227,9 @@ function invalidLink(){
     <p style="color:var(--muted);margin-top:8px">Ce lien privé n'existe pas ou a été révoqué. Contactez Le Petit Booth.</p></div>${adminBack}</div>`);
 }
 async function route(){
-  const m=(location.hash||'').match(/^#\/(client|prestataire)\/(.+)$/);
+  // Le jeton s'arrête au premier « ? » : au retour de Stripe, l'adresse
+  // contient « ?paiement=ok » qu'il ne faut pas confondre avec le jeton.
+  const m=(location.hash||'').match(/^#\/(client|prestataire)\/([^?]+)/);
   if(m){
     if(m[1]==='client'){
       await factLoad();
