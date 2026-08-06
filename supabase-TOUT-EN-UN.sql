@@ -116,6 +116,12 @@ create table if not exists public.reservations (
   statut text not null default 'nouvelle' check (statut in ('nouvelle','traitee','archivee')),
   created_at timestamptz not null default now()
 );
+-- Créneau horaire choisi par le client (formulaire de réservation).
+-- Ajouts non destructifs, ré-exécutables.
+alter table public.reservations add column if not exists heure_debut text;
+alter table public.reservations add column if not exists heure_fin   text;
+alter table public.reservations add column if not exists nb_heures   numeric;
+
 create index if not exists reservations_statut_idx on public.reservations (statut);
 create index if not exists reservations_created_idx on public.reservations (created_at desc);
 

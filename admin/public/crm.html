@@ -2570,7 +2570,20 @@ async function route(){
       document.body.appendChild(cc);
     }
     cc.style.display='flex';
-    setTimeout(()=>{ if(!state.user){ cc.style.display='none'; $('#login').style.display='flex'; refreshDbBadge(); } }, 2500);
+    // Intégré dans l'administration (iframe) : on ne montre JAMAIS l'écran de
+    // connexion — on redemande la session à l'administration jusqu'à l'obtenir.
+    // Ouvert seul (onglet direct) : comportement inchangé, connexion au bout de 2,5 s.
+    let embarque=false; try{ embarque = window.parent && window.parent !== window; }catch(_){ embarque=true; }
+    if(embarque){
+      let essais=0;
+      const relance=setInterval(()=>{
+        if(state.user || ++essais>40){ clearInterval(relance); return; }
+        try{ window.parent.postMessage({ type:'lpb-crm-ready' }, location.origin); }catch(_){}
+      }, 700);
+      setTimeout(()=>{ if(!state.user){ cc.style.display='none'; $('#login').style.display='flex'; refreshDbBadge(); } }, 30000);
+    } else {
+      setTimeout(()=>{ if(!state.user){ cc.style.display='none'; $('#login').style.display='flex'; refreshDbBadge(); } }, 2500);
+    }
   }
 }
 

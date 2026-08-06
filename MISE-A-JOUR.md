@@ -25,7 +25,44 @@ Envoyez le contenu du dossier sur GitHub → Vercel redéploie tout seul.
 
 # Ce qui a changé
 
-## Paiements Stripe — synchronisation automatique (dernière mise à jour)
+## Dernière mise à jour
+
+**Statistiques réparées.** Les visites n'étaient jamais enregistrées : la
+requête d'envoi vers Supabase n'était jamais exécutée (appel sans `await`,
+la librairie n'envoie alors rien). Corrigé — visites, lectures de vidéos,
+écoutes de témoignages et clics « Réserver » sont désormais réellement
+comptés. Chaque visiteur compte une fois par jour et par appareil : les
+rechargements de page ne gonflent pas les chiffres. La page **Statistiques**
+du back-office affiche maintenant un vrai tableau de bord : visiteurs jour /
+mois / total, évolution quotidienne (30 jours), évolution mensuelle
+(12 mois), appareils, conversion.
+
+**CRM sans écran intermédiaire.** Ouvert depuis l'administration, le CRM
+n'affiche plus l'écran de connexion : il patiente sur « Connexion à
+l'administration… » et redemande la session jusqu'à l'obtenir. Ouvert
+directement dans un onglet, rien ne change. Aucune modification du
+fonctionnement interne du CRM.
+
+**Réservations cliquables.** Dans le back-office, cliquer sur une demande
+ouvre sa fiche détaillée complète (nom, prénom, téléphone et e-mail
+cliquables, date, formule, horaires, nombre d'heures, lieu, invités,
+message, date de réception) avec les actions traiter / archiver / supprimer.
+
+**Nouvel ordre du site public.** Introduction → vidéos (« Ce que ça donne
+en vrai ») → galerie photos → « Une expérience clé en main » → avis
+clients → formules → suite inchangée.
+
+**Choix des horaires à la réservation.** Essentiel : 2 h fixes ·
+Expérience : 5 h fixes · Signature : jusqu'à 8 h · Sur mesure : nombre
+d'heures au choix puis créneau. L'heure de fin se calcule automatiquement
+pour les durées imposées, la durée est vérifiée avant l'envoi (les créneaux
+passant minuit sont acceptés). Les horaires sont enregistrés avec la
+demande et visibles dans le back-office.
+
+> **À faire : ré-exécuter `supabase-TOUT-EN-UN.sql`** (une fois, non
+> destructif) pour ajouter les colonnes horaires aux réservations.
+
+## Paiements Stripe — synchronisation automatique
 
 **Le problème** : après un paiement Stripe, la fiche affichait toujours
 « Reste à payer », les boutons restaient cliquables et le tableau de bord
