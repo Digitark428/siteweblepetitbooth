@@ -132,7 +132,7 @@ function GalleryEditor({ item, onSave, onClose }) {
           <div>
             <span className="field-lbl">Vidéo (fichier importé)</span>
             {f.media_url && !/youtu/.test(f.media_url)
-              ? <video src={f.media_url} className="thumb" style={{ width: "100%", height: 120 }} muted onClick={() => setPicker("media")} />
+              ? <video src={f.media_url} className="thumb" style={{ width: "100%", height: 120 }} muted preload="metadata" onClick={() => setPicker("media")} />
               : <div className="thumb thumb--pick" style={{ width: "100%", height: 120 }} onClick={() => setPicker("media")}><Film size={20} /></div>}
           </div>
           <div>

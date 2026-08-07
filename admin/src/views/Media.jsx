@@ -69,7 +69,7 @@ export default function Media() {
               <span className="media-kind">{m.kind}</span>
               <button className="del" onClick={() => remove(m)} aria-label="Supprimer"><Trash2 size={14} /></button>
               {m.kind === "image" && <img className="media-thumb" src={m.url} alt={m.name} loading="lazy" />}
-              {m.kind === "video" && <video className="media-thumb" src={m.url} muted />}
+              {m.kind === "video" && <video className="media-thumb" src={m.url} muted preload="none" />}
               {m.kind === "audio" && <div className="media-thumb media-thumb--audio"><Music size={26} /></div>}
               <div className="media-info">
                 <div className="n">{m.name}</div>

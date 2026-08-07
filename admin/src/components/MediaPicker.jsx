@@ -49,7 +49,7 @@ export default function MediaPicker({ kind = "image", onPick, onClose }) {
           {items.map(m => (
             <div className="media-tile" key={m.id} onClick={() => onPick(m)}>
               {m.kind === "image" && <img className="media-thumb" src={m.url} alt={m.name} />}
-              {m.kind === "video" && <video className="media-thumb" src={m.url} muted />}
+              {m.kind === "video" && <video className="media-thumb" src={m.url} muted preload="none" />}
               {m.kind === "audio" && <div className="media-thumb media-thumb--audio"><Music size={26} /></div>}
               <div className="media-info"><div className="n">{m.name}</div><div className="m">{humanSize(m.size_bytes)}</div></div>
             </div>

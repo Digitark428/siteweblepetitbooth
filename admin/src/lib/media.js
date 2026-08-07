@@ -27,7 +27,31 @@ export async function listMedia() {
   return error ? [] : data;
 }
 
-export async function uploadMedia(file) {
+/* FUITE EGRESS : compresse les images côté navigateur avant l'envoi.
+   Une photo de téléphone fait 3 à 8 Mo ; affichée en vignette + lightbox,
+   1 920 px / JPEG qualité 82 % suffit largement (≈ 300-600 Ko, soit 10× moins
+   de trafic Storage à chaque affichage sur le site public). */
+async function compressImage(file, maxSide = 1920, quality = 0.82) {
+  if (!file.type.startsWith("image/") || file.type === "image/gif" || file.type === "image/svg+xml") return file;
+  if (file.size < 400 * 1024) return file; // déjà légère
+  try {
+    const bmp = await createImageBitmap(file);
+    const scale = Math.min(1, maxSide / Math.max(bmp.width, bmp.height));
+    if (scale === 1 && file.size < 900 * 1024) { bmp.close(); return file; }
+    const w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale);
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    canvas.getContext("2d").drawImage(bmp, 0, 0, w, h);
+    bmp.close();
+    const blob = await new Promise(res => canvas.toBlob(res, "image/jpeg", quality));
+    if (!blob || blob.size >= file.size) return file;
+    const name = file.name.replace(/\.[^.]+$/, "") + ".jpg";
+    return new File([blob], name, { type: "image/jpeg" });
+  } catch (_) { return file; }
+}
+
+export async function uploadMedia(rawFile) {
+  const file = await compressImage(rawFile);
   const kind = kindOf(file);
   const safe = file.name.replace(/[^\w.\-]+/g, "_");
   const path = `${kind}s/${Date.now()}-${safe}`;
@@ -42,7 +66,11 @@ export async function uploadMedia(file) {
     return asset;
   }
 
-  const up = await supabase.storage.from("medias").upload(path, file, { upsert: false });
+  /* FUITE EGRESS : sans cacheControl, Supabase applique max-age=3600 (1 h).
+     Chaque visiteur re-téléchargeait donc TOUS les médias toutes les heures.
+     Les noms de fichiers étant horodatés (jamais réutilisés), un cache d'un an
+     est sans risque : le navigateur ne re-télécharge plus jamais un média déjà vu. */
+  const up = await supabase.storage.from("medias").upload(path, file, { upsert: false, cacheControl: "31536000" });
   if (up.error) throw up.error;
   const url = supabase.storage.from("medias").getPublicUrl(path).data.publicUrl;
   const { data, error } = await supabase.from("media_assets").insert({

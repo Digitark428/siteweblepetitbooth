@@ -198,7 +198,8 @@ function setupRecorder(){
 /* ---------- Envoi ---------- */
 async function upload(file, prefix, ext){
   const name = prefix + '/' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '.' + ext;
-  const { error } = await sb.storage.from('medias').upload(name, file, { upsert: false });
+  /* Cache navigateur 1 an : le nom est unique (horodaté), donc jamais réutilisé. */
+  const { error } = await sb.storage.from('medias').upload(name, file, { upsert: false, cacheControl: '31536000' });
   if (error) throw error;
   return sb.storage.from('medias').getPublicUrl(name).data.publicUrl;
 }

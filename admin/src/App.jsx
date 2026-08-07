@@ -15,7 +15,6 @@ import Formulas from "./views/Formulas.jsx";
 import MusicView from "./views/MusicView.jsx";
 import Settings from "./views/Settings.jsx";
 import Soon from "./views/Soon.jsx";
-import Stats from "./views/Stats.jsx";
 import CrmFrame from "./views/CrmFrame.jsx";
 
 /* Données de démonstration (utilisées si aucune base n'est connectée) */
@@ -93,7 +92,7 @@ export default function App() {
       {view === "formules" && <Formulas />}
       {view === "musique" && <MusicView />}
       {view === "parametres" && <Settings />}
-      {view === "stats" && <Stats />}
+      {view === "stats" && <Soon view="stats" />}
     </Shell>
   );
 }

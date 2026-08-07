@@ -54,17 +54,11 @@ module.exports = async function handler(req, res) {
     const montant = calc[type];           // en euros
     if (!(montant > 0)) return res.status(400).json({ error: 'Montant nul : rien à régler.' });
 
-    if (calc.toutPaye) {
-      return res.status(400).json({ error: 'Ce dossier est déjà entièrement réglé.' });
-    }
     if (type === 'solde' && !calc.acomptePaye) {
       return res.status(400).json({ error: "Le solde ne peut être réglé qu'après l'acompte." });
     }
-    if (type === 'acompte' && calc.acomptePaye) {
-      return res.status(400).json({ error: "L'acompte est déjà réglé." });
-    }
-    if (type === 'total' && calc.acomptePaye) {
-      return res.status(400).json({ error: "L'acompte est déjà réglé : il ne reste que le solde." });
+    if (calc.toutPaye) {
+      return res.status(400).json({ error: 'Ce dossier est déjà entièrement réglé.' });
     }
 
     const nomClient = [fiche.prenom, fiche.nom].filter(Boolean).join(' ') || 'Client';
@@ -98,10 +92,7 @@ module.exports = async function handler(req, res) {
         type,
         montant: String(montant),
       },
-      // {CHECKOUT_SESSION_ID} est remplacé par Stripe : au retour, l'espace
-      // client vérifie la session côté serveur (/api/stripe-verify) et la
-      // fiche se met à jour même si le webhook n'est pas configuré.
-      success_url: base + '#/client/' + token + '?paiement=ok&session={CHECKOUT_SESSION_ID}',
+      success_url: base + '#/client/' + token + '?paiement=ok',
       cancel_url: base + '#/client/' + token + '?paiement=annule',
       locale: 'fr',
     });
@@ -144,9 +135,7 @@ function calculer(c) {
   const paiements = Array.isArray(c.paiements) ? c.paiements : [];
   const paye = paiements.filter(p => p.statut === 'paye').reduce((s, p) => s + nb(p.montant), 0);
 
-  const acomptePaye = factu.faStatut === 'payee'
-    || factu.paiementStatut === 'acompte'
-    || factu.paiementStatut === 'complet';
+  const acomptePaye = factu.faStatut === 'payee' || factu.paiementStatut === 'complet';
   const toutPaye = factu.paiementStatut === 'complet';
 
   return { total, acompte, solde, paye, acomptePaye, toutPaye, pct };

@@ -613,7 +613,10 @@ function logout(){ state.user=null; state.adminPw=null; state.route='dashboard';
 function enterApp(){
   factLoad();
   chargerPaiements();
-  if(!window.__paieTimer) window.__paieTimer=setInterval(chargerPaiements, 60000);
+  /* Anti-gaspillage : on n'interroge la base que si l'onglet est réellement visible
+     (un onglet CRM oublié en arrière-plan générait 1 440 requêtes/jour). */
+  if(!window.__paieTimer) window.__paieTimer=setInterval(()=>{ if(document.visibilityState==='visible') chargerPaiements(); }, 120000);
+  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') chargerPaiements(); });
   const cc=document.getElementById('crm-connecting'); if(cc)cc.style.display='none';
   $('#public').innerHTML=''; $('#public').style.display='none';
   $('#login').style.display='none'; $('#app').style.display='block';
@@ -1425,19 +1428,9 @@ const FACT_DEFAUT = {
     devis: "Nous vous remercions de votre confiance. Ce devis détaille la prestation convenue pour votre événement.",
     facture: "Nous vous remercions de votre confiance.",
     mentions: "TVA non applicable, article 293 B du Code général des impôts.",
-    cgv: "Le devis est valable pour la durée indiquée ci-dessus. La réservation de la date devient ferme à réception de l'acompte. Le solde est exigible selon le délai indiqué. Tout retard de paiement entraîne des pénalités au taux légal ainsi qu'une indemnité forfaitaire de recouvrement de 40 € (art. L441-10 du Code de commerce)."
+    cgv: "Le devis est valable pour la durée indiquée ci-dessus. La réservation de la date devient ferme à réception de l'acompte. En cas d'annulation à moins de 30 jours de l'événement, l'acompte reste acquis au prestataire. Le solde est exigible selon le délai indiqué. Tout retard de paiement entraîne des pénalités au taux légal ainsi qu'une indemnité forfaitaire de recouvrement de 40 € (art. L441-10 du Code de commerce)."
   },
-  stripe: { publishableKey: '', actif: false },
-  // Apparence des PDF. Une valeur vide = reprise automatique de la charte du site.
-  design: {
-    logo: '',                 // image chargée dans l'administration ({ data, w, h })
-    slogan: 'Entrez dans une autre dimension',
-    piedDePage: '',
-    perso: false,             // false = couleurs du site, true = couleurs choisies ci-dessous
-    couleurPrincipale: '', couleurSecondaire: '',
-    degrade1: '', degrade2: '', degrade3: '',
-    couleurTitres: '', couleurCartes: ''
-  }
+  stripe: { publishableKey: '', actif: false }
 };
 
 let FACT = JSON.parse(JSON.stringify(FACT_DEFAUT));
@@ -1474,22 +1467,7 @@ async function factSave(){
     delaiValidite: gn('fx-validite') || 30,
     delaiPaiement: gn('fx-paiement') || 30,
     textes: { devis: g('fx-t-devis'), facture: g('fx-t-facture'), mentions: g('fx-t-mentions'), cgv: g('fx-t-cgv') },
-    stripe: { publishableKey: g('fx-stripe-pk'), actif: !!$('#fx-stripe-actif')?.checked },
-    design: (() => {
-      const perso = !!$('#fx-d-perso')?.checked;
-      const gc = id => perso ? (($('#' + id)?.value || '').trim()) : '';
-      return {
-        logo: (FACT.design && FACT.design.logo) || '',
-        slogan: g('fx-d-slogan'),
-        piedDePage: g('fx-d-pied'),
-        perso,
-        couleurPrincipale: gc('fx-d-principale'),
-        couleurSecondaire: gc('fx-d-secondaire'),
-        degrade1: gc('fx-d-grad1'), degrade2: gc('fx-d-grad2'), degrade3: gc('fx-d-grad3'),
-        couleurTitres: gc('fx-d-titres'),
-        couleurCartes: gc('fx-d-cartes')
-      };
-    })()
+    stripe: { publishableKey: g('fx-stripe-pk'), actif: !!$('#fx-stripe-actif')?.checked }
   });
   try {
     if (!supa) throw new Error('hors ligne');
@@ -1572,264 +1550,94 @@ const fmtEur = n => Number(n || 0).toFixed(2).replace('.', ',') + ' €';
 function dateFR(d){ const x = d instanceof Date ? d : new Date(d); return String(x.getDate()).padStart(2,'0')+'/'+String(x.getMonth()+1).padStart(2,'0')+'/'+x.getFullYear(); }
 function addDays(d, n){ const x = new Date(d); x.setDate(x.getDate()+n); return x; }
 
-/* ---------- Charte graphique des PDF ----------
-   Les couleurs sont lues en direct dans les variables CSS du site
-   (--violet, --pink, --purple, --bg3…) : si la charte du site change,
-   les documents suivent automatiquement. L'administration peut aussi
-   imposer des couleurs personnalisées (FACT.design).                 */
-function hex2rgb(h){
-  if (Array.isArray(h)) return h;
-  const m = String(h || '').trim().match(/^#?([0-9a-f]{6})$/i);
-  if (!m) return null;
-  const n = parseInt(m[1], 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-}
-const rgb2hex = c => '#' + c.map(v => v.toString(16).padStart(2, '0')).join('');
-const lerpC = (a, b, t) => [0, 1, 2].map(i => Math.round(a[i] + (b[i] - a[i]) * t));
-function siteVar(n){
-  try { return (getComputedStyle(document.documentElement).getPropertyValue(n) || '').trim(); }
-  catch (_){ return ''; }
-}
-function pdfTheme(){
-  const D = FACT.design || {};
-  const c = (v, sv, fb) => hex2rgb(v) || hex2rgb(siteVar(sv)) || hex2rgb(fb);
-  const principale = c(D.couleurPrincipale, '--violet', '#C77DFF');
-  return {
-    principale,
-    secondaire: c(D.couleurSecondaire, '--pink', '#FF4D8D'),
-    g1: c(D.degrade1, '--pink',   '#FF4D8D'),
-    g2: c(D.degrade2, '--violet', '#C77DFF'),
-    g3: c(D.degrade3, '--purple', '#8a6bff'),
-    sombre: c(D.couleurTitres, '--bg3', '#1a0e30'),
-    carte: hex2rgb(D.couleurCartes) || lerpC(principale, [255, 255, 255], 0.94),
-    bord: lerpC(principale, [255, 255, 255], 0.72),
-    encre: [43, 31, 61],
-    gris: [122, 111, 143],
-    blanc: [255, 255, 255]
-  };
-}
-/* Dégradé horizontal (jsPDF ne le gère pas nativement : fines tranches). */
-function degradePdf(doc, x, y, w, h, c1, c2, c3){
-  const n = Math.max(24, Math.round(w / 1.6));
-  const dw = w / n;
-  for (let i = 0; i < n; i++){
-    const t = n === 1 ? 0 : i / (n - 1);
-    const cc = t < 0.5 ? lerpC(c1, c2, t * 2) : lerpC(c2, c3, (t - 0.5) * 2);
-    doc.setFillColor(cc[0], cc[1], cc[2]);
-    doc.rect(x + dw * i, y, dw + 0.12, h, 'F');
-  }
-}
-
-/* ---------- Typographies du site (Sora / Manrope) ----------
-   Chargées une seule fois puis mises en cache. En cas d'échec réseau,
-   repli silencieux sur Helvetica : la génération n'échoue jamais.     */
-const POLICES_PDF = [
-  ['Sora',    'normal', 'https://fonts.gstatic.com/s/sora/v17/xMQOuFFYT72X5wkB_18qmnndmSdSnn-K.ttf'],
-  ['Sora',    'bold',   'https://fonts.gstatic.com/s/sora/v17/xMQOuFFYT72X5wkB_18qmnndmSe1mX-K.ttf'],
-  ['Manrope', 'normal', 'https://fonts.gstatic.com/s/manrope/v20/xn7_YHE41ni1AdIRqAuZuw1Bx9mbZk79FO_F.ttf'],
-  ['Manrope', 'bold',   'https://fonts.gstatic.com/s/manrope/v20/xn7_YHE41ni1AdIRqAuZuw1Bx9mbZk4aE-_F.ttf']
-];
-let policesPdfPromesse = null;
-function chargerPolicesPdf(){
-  if (!policesPdfPromesse){
-    policesPdfPromesse = Promise.all(POLICES_PDF.map(async ([fam, style, url]) => {
-      const r = await fetch(url);
-      if (!r.ok) throw new Error('police indisponible');
-      const buf = new Uint8Array(await r.arrayBuffer());
-      let bin = '';
-      for (let i = 0; i < buf.length; i += 0x8000)
-        bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
-      return [fam, style, btoa(bin)];
-    })).catch(e => { policesPdfPromesse = null; throw e; });
-  }
-  return policesPdfPromesse;
-}
-async function installerPolicesPdf(doc){
-  try {
-    (await chargerPolicesPdf()).forEach(([fam, style, b64]) => {
-      const fichier = fam + '-' + style + '.ttf';
-      doc.addFileToVFS(fichier, b64);
-      doc.addFont(fichier, fam, style);
-    });
-    return { titre: 'Sora', texte: 'Manrope' };
-  } catch (_){
-    return { titre: 'helvetica', texte: 'helvetica' };
-  }
-}
-
-/* Conditions générales, sans les mentions sur le sort de l'acompte. */
-function cgvPourPdf(){
-  const t = String(FACT.textes.cgv || '');
-  return (t.match(/[^.]*\.?/g) || [])
-    .filter(p => p.trim() && !/acquis|rembours/i.test(p))
-    .join('').trim();
-}
-
 async function buildPdf(c, kind, numero){
   const jsPDF = await ensureJsPDF();
   const def = DOC_DEFS[kind];
   const doc = new jsPDF({ unit:'mm', format:'a4' });
-  const PO = await installerPolicesPdf(doc);      // Sora / Manrope (typos du site)
-  const W = 210, M = 14;
-  const E = FACT.entreprise, B = FACT.banque, D = FACT.design || {};
-  const T = pdfTheme();                           // couleurs du site (ou personnalisées)
+  const W = 210, M = 16;
+  const E = FACT.entreprise, B = FACT.banque;
+  const VIOLET = [199,125,255], MAGENTA = [255,77,141], SOMBRE = [26,14,40], GRIS = [120,110,140];
 
-  const fT = s => doc.setFont(PO.titre, s || 'normal');
-  const fX = s => doc.setFont(PO.texte, s || 'normal');
-  const col  = k => doc.setTextColor(k[0], k[1], k[2]);
-  const fill = k => doc.setFillColor(k[0], k[1], k[2]);
-  const draw = k => doc.setDrawColor(k[0], k[1], k[2]);
-  const carte = (x, y2, w, h, r) => {
-    fill(T.carte); draw(T.bord); doc.setLineWidth(0.25);
-    doc.roundedRect(x, y2, w, h, r ?? 3, r ?? 3, 'FD');
-  };
-  const etiquette = (lab, x, y2) => {
-    fill(T.principale); doc.circle(x + 5.4, y2 + 5.9, 1.05, 'F');
-    fT('bold'); doc.setFontSize(7.6); col(T.principale);
-    doc.text(lab, x + 8.6, y2 + 7);
-  };
+  // ---- Bandeau ----
+  doc.setFillColor(...SOMBRE); doc.rect(0, 0, W, 34, 'F');
+  doc.setFillColor(...VIOLET); doc.rect(0, 33, W, 1.2, 'F');
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(19);
+  doc.text(E.nom || 'Le Petit Booth', M, 15);
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(210,195,235);
+  doc.text('Vidéo Booth 360 · La Réunion', M, 21);
+  doc.setFontSize(15); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+  doc.text(def.titre, W - M, 15, { align:'right' });
+  doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(230,215,250);
+  doc.text('N° ' + numero, W - M, 21.5, { align:'right' });
+  doc.text(dateFR(new Date()), W - M, 26.5, { align:'right' });
 
-  /* ===== En-tête : bandeau sombre + dégradé du site ===== */
-  fill(T.sombre); doc.rect(0, 0, W, 40, 'F');
-  degradePdf(doc, 0, 39, W, 1.5, T.g1, T.g2, T.g3);
-
-  let xTxt = M;
-  const logo = (D.logo && D.logo.data) ? D.logo : null;
-  if (logo){
-    try {
-      const lh = 17, ratio = (logo.w && logo.h) ? logo.w / logo.h : 1;
-      const lw = Math.min(46, lh * ratio);
-      doc.addImage(logo.data, 'PNG', M, 8.5, lw, lh);
-      xTxt = M + lw + 6;
-    } catch (_){ /* logo illisible : on continue sans */ }
-  }
-  col(T.blanc); fT('bold'); doc.setFontSize(18.5);
-  doc.text(E.nom || 'Le Petit Booth', xTxt, 17);
-  col(lerpC(T.principale, T.blanc, 0.5)); fX(); doc.setFontSize(8.8);
-  doc.text(String(D.slogan || 'Entrez dans une autre dimension'), xTxt, 23.5);
-
-  fT('bold'); doc.setFontSize(14.5); col(T.blanc);
-  doc.text(def.titre, W - M, 15.5, { align:'right' });
-  const wTitre = doc.getTextWidth(def.titre);
-  degradePdf(doc, W - M - wTitre, 17.8, wTitre, 0.9, T.g1, T.g2, T.g3);
-  fX(); doc.setFontSize(8.8); col(lerpC(T.principale, T.blanc, 0.6));
-  doc.text('N° ' + numero, W - M, 24.5, { align:'right' });
-  doc.text(dateFR(new Date()), W - M, 29.5, { align:'right' });
-
-  /* ===== Cartes Émetteur / Client ===== */
   let y = 46;
+  // ---- Émetteur / Client ----
+  doc.setFontSize(7.5); doc.setTextColor(...GRIS); doc.setFont('helvetica','bold');
+  doc.text('ÉMETTEUR', M, y); doc.text('CLIENT', 118, y);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(40,30,55);
   const emetteur = [E.nom, E.adresse, [E.codePostal, E.ville].filter(Boolean).join(' '), E.pays,
                     E.telephone, E.email, E.siren ? 'SIREN ' + E.siren : '', E.tva ? 'TVA ' + E.tva : '']
                    .filter(Boolean);
-  const client = [[c.prenom, c.nom].filter(Boolean).join(' ') || 'Client', c.adresse,
+  const client = [[c.prenom, c.nom].filter(Boolean).join(' '), c.adresse,
                   [c.codePostal, c.ville].filter(Boolean).join(' '), c.pays || 'France',
                   c.telephone, c.email].filter(Boolean);
-  const wC = (W - 2*M - 6) / 2;
-  const hC = Math.max(emetteur.length, client.length) * 4.6 + 14.5;
-  carte(M, y, wC, hC); carte(M + wC + 6, y, wC, hC);
-  etiquette('ÉMETTEUR', M, y); etiquette('CLIENT', M + wC + 6, y);
-  const bloc = (lignes2, x) => {
-    let yy2 = y + 13.6;
-    lignes2.forEach((l, i) => {
-      if (i === 0){ fX('bold'); doc.setFontSize(9.2); } else { fX(); doc.setFontSize(8.7); }
-      col(T.encre);
-      doc.text(String(l), x + 5.4, yy2); yy2 += 4.6;
-    });
-  };
-  bloc(emetteur, M); bloc(client, M + wC + 6);
-  y += hC + 5;
+  let yE = y + 5.5, yC = y + 5.5;
+  emetteur.forEach(l => { doc.text(String(l), M, yE); yE += 4.6; });
+  client.forEach(l => { doc.text(String(l), 118, yC); yC += 4.6; });
+  y = Math.max(yE, yC) + 6;
 
-  /* ===== Événement · Date · Horaires · Lieu ===== */
-  const infos = [
-    ['ÉVÉNEMENT', String(c.typeEvenement || '—')],
-    ['DATE', c.datePrestation ? dateFR(c.datePrestation) : '—'],
-    ['HORAIRES', (c.heureDebut || '—') + (c.heureFin ? ' – ' + c.heureFin : '')],
-    ['LIEU', String(c.lieu || c.ville || '—')]
-  ];
-  const wI = (W - 2*M - 3*4) / 4;
-  infos.forEach((it, i) => {
-    const x = M + i * (wI + 4);
-    carte(x, y, wI, 14.5, 2.6);
-    fT('bold'); doc.setFontSize(6.4); col(T.gris);
-    doc.text(it[0], x + 4, y + 5.4);
-    fX('bold'); doc.setFontSize(8.6); col(T.encre);
-    doc.text(doc.splitTextToSize(it[1], wI - 8)[0] || '—', x + 4, y + 10.8);
-  });
-  y += 19.5;
+  // ---- Encadré prestation ----
+  doc.setDrawColor(226,216,240); doc.setFillColor(250,247,254);
+  doc.roundedRect(M, y, W - 2*M, 16, 2.5, 2.5, 'FD');
+  doc.setFontSize(7.5); doc.setTextColor(...GRIS); doc.setFont('helvetica','bold');
+  doc.text('ÉVÉNEMENT', M + 5, y + 5.5);
+  doc.text('DATE', 78, y + 5.5); doc.text('HORAIRES', 118, y + 5.5); doc.text('LIEU', 152, y + 5.5);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(40,30,55);
+  doc.text(String(c.typeEvenement || '—').slice(0,26), M + 5, y + 11.5);
+  doc.text(c.datePrestation ? dateFR(c.datePrestation) : '—', 78, y + 11.5);
+  doc.text(((c.heureDebut||'—') + (c.heureFin ? ' – ' + c.heureFin : '')).slice(0,18), 118, y + 11.5);
+  doc.text(String(c.lieu || c.ville || '—').slice(0,24), 152, y + 11.5);
+  y += 24;
 
-  /* ===== Carte Prestation (désignations + montants) ===== */
+  // ---- Tableau des lignes ----
   const lignes = [];
   lignes.push({ d: formuleLabel(c) + (FORMULES[c.formule]?.desc ? ' — ' + FORMULES[c.formule].desc : ''), p: Number(c.montant||0) });
   (c.options || []).forEach(o => lignes.push({ d: 'Option — ' + (o.nom || 'option'), p: Number(o.prix||0) }));
   if (fraisKmOf(c) > 0) lignes.push({ d: 'Frais de déplacement' + (c.fraisKmLabel ? ' — ' + c.fraisKmLabel : ''), p: fraisKmOf(c) });
 
-  const wLig = W - 2*M - 8;
-  const lignesTxt = lignes.map(l => doc.splitTextToSize(String(l.d), wLig - 34).slice(0, 2));
-  const obs = String(c.observations || '').trim();
-  const obsTxt = obs ? doc.splitTextToSize(obs, wLig - 8) : [];
-  const hRows = lignesTxt.reduce((s, ls) => s + 3.2 + ls.length * 4.4, 0);
-  const hPresta = 11 + 7.8 + hRows + (obsTxt.length ? 8.5 + obsTxt.length * 4.1 : 0) + 3.5;
-  carte(M, y, W - 2*M, hPresta);
-  etiquette('PRESTATION', M, y);
-  let yy = y + 10.6;
-  fill(T.sombre); doc.roundedRect(M + 4, yy, wLig, 7.2, 1.8, 1.8, 'F');
-  fT('bold'); doc.setFontSize(7.4); col(T.blanc);
-  doc.text('DÉSIGNATION', M + 8, yy + 4.9);
-  doc.text('MONTANT', M + 4 + wLig - 4, yy + 4.9, { align:'right' });
-  yy += 7.8;
-  lignesTxt.forEach((ls, i) => {
-    const hR = 3.2 + ls.length * 4.4;
-    if (i % 2){ fill(T.blanc); doc.roundedRect(M + 4, yy + 0.4, wLig, hR - 0.8, 1.2, 1.2, 'F'); }
-    fX(); doc.setFontSize(8.9); col(T.encre);
-    ls.forEach((l2, j) => doc.text(l2, M + 8, yy + 4.9 + j * 4.4));
-    fX('bold');
-    doc.text(fmtEur(lignes[i].p), M + 4 + wLig - 4, yy + 4.9, { align:'right' });
-    yy += hR;
+  doc.setFillColor(...SOMBRE); doc.rect(M, y, W - 2*M, 8, 'F');
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(8);
+  doc.text('DÉSIGNATION', M + 4, y + 5.4);
+  doc.text('MONTANT', W - M - 4, y + 5.4, { align:'right' });
+  y += 8;
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(40,30,55);
+  lignes.forEach((l, i) => {
+    if (i % 2) { doc.setFillColor(249,246,253); doc.rect(M, y, W - 2*M, 8, 'F'); }
+    const txt = doc.splitTextToSize(String(l.d), 128)[0];
+    doc.text(txt, M + 4, y + 5.4);
+    doc.text(fmtEur(l.p), W - M - 4, y + 5.4, { align:'right' });
+    y += 8;
   });
-  if (obsTxt.length){
-    yy += 2;
-    degradePdf(doc, M + 8, yy, wLig - 8, 0.4, T.g1, T.g2, T.g3);
-    yy += 4.3;
-    fT('bold'); doc.setFontSize(6.6); col(T.gris); doc.text('OBSERVATIONS', M + 8, yy);
-    yy += 3.9;
-    fX(); doc.setFontSize(8.2); col(T.encre);
-    obsTxt.forEach(l2 => { doc.text(l2, M + 8, yy); yy += 4.1; });
-  }
-  y += hPresta + 5;
+  doc.setDrawColor(226,216,240); doc.line(M, y, W - M, y);
+  y += 7;
 
-  /* ===== Coordonnées bancaires (à gauche) + carte des totaux (à droite) ===== */
-  const xTot = 114, wTot = W - M - xTot;
-  const lignesTot = [['Sous-total', fmtEur(sousTotal(c)), null]];
-  if (remiseOf(c) > 0)
-    lignesTot.push(['Remise' + (c.remiseLabel ? ' (' + c.remiseLabel + ')' : ''), '– ' + fmtEur(remiseOf(c)), T.secondaire]);
-  lignesTot.push(['TVA', fmtEur(0), null]);
-  const hTot = lignesTot.length * 5.4 + 15.5;
-  const lB = [B.titulaire && ('Titulaire : ' + B.titulaire), B.iban && ('IBAN : ' + B.iban), B.bic && ('BIC : ' + B.bic)].filter(Boolean);
-  if (lB.length){
-    const wB = xTot - M - 5;
-    carte(M, y, wB, Math.max(hTot, 12.5 + lB.length * 4.6));
-    etiquette('COORDONNÉES BANCAIRES', M, y);
-    fX(); doc.setFontSize(8.3); col(T.encre);
-    let yB = y + 13.4;
-    lB.forEach(l2 => { doc.text(doc.splitTextToSize(String(l2), wB - 11)[0], M + 5.4, yB); yB += 4.6; });
+  // ---- Totaux ----
+  const ligneTotal = (lab, val, gras, couleur) => {
+    doc.setFont('helvetica', gras ? 'bold' : 'normal');
+    doc.setFontSize(gras ? 11 : 9.5);
+    if (couleur) doc.setTextColor(...couleur); else doc.setTextColor(40,30,55);
+    doc.text(lab, 118, y);
+    doc.text(val, W - M - 4, y, { align:'right' });
+    y += gras ? 7.5 : 6;
+  };
+  if (remiseOf(c) > 0){
+    ligneTotal('Sous-total', fmtEur(sousTotal(c)));
+    ligneTotal('Remise' + (c.remiseLabel ? ' (' + c.remiseLabel + ')' : ''), '– ' + fmtEur(remiseOf(c)), false, MAGENTA);
   }
-  carte(xTot, y, wTot, hTot);
-  let yT = y + 6.8;
-  lignesTot.forEach(l2 => {
-    fX(); doc.setFontSize(8.6); col(l2[2] || T.gris);
-    doc.text(l2[0], xTot + 5, yT);
-    fX('bold'); col(l2[2] || T.encre);
-    doc.text(l2[1], xTot + wTot - 5, yT, { align:'right' });
-    yT += 5.4;
-  });
-  degradePdf(doc, xTot + 5, yT - 2.4, wTot - 10, 0.45, T.g1, T.g2, T.g3);
-  yT += 2.4;
-  fT('bold'); doc.setFontSize(10.5); col(T.encre);
-  doc.text('TOTAL TTC', xTot + 5, yT);
-  doc.text(fmtEur(totalTTC(c)), xTot + wTot - 5, yT, { align:'right' });
-  y += Math.max(hTot, lB.length ? 12.5 + lB.length * 4.6 : 0) + 5;
+  ligneTotal('Total TTC', fmtEur(totalTTC(c)), true);
 
-  // Montant dû selon le type de document (logique inchangée)
+  // Montant dû selon le type de document
   let montantDu = totalTTC(c), mention = '';
   if (kind === 'factureAcompte'){
     montantDu = montantAcompte(c);
@@ -1841,61 +1649,61 @@ async function buildPdf(c, kind, numero){
     mention = "Acompte de " + pctAcompte(c) + " % (" + fmtEur(montantAcompte(c)) + ") à la réservation, solde de "
             + fmtEur(montantSolde(c)) + " selon les conditions ci-dessous.";
   }
-
-  /* ===== Le montant : l'élément le plus visible du document ===== */
-  fill(T.sombre); doc.roundedRect(M, y, W - 2*M, 17, 3, 3, 'F');
-  degradePdf(doc, M + 3, y + 1.1, W - 2*M - 6, 0.7, T.g1, T.g2, T.g3);
-  fT('bold'); doc.setFontSize(10.5); col(T.blanc);
-  doc.text(kind === 'devis' ? 'TOTAL À RÉGLER' : 'NET À PAYER', M + 7, y + 11);
-  doc.setFontSize(19.5);
-  doc.text(fmtEur(montantDu), W - M - 7, y + 11.9, { align:'right' });
-  y += 22;
-
+  if (kind !== 'devis'){
+    y += 1.5;
+    doc.setFillColor(...SOMBRE); doc.roundedRect(112, y - 5, W - M - 112, 12, 2, 2, 'F');
+    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(11);
+    doc.text('NET À PAYER', 116, y + 2.6);
+    doc.text(fmtEur(montantDu), W - M - 4, y + 2.6, { align:'right' });
+    y += 14;
+  }
   if (mention){
-    fX(); doc.setFontSize(8.3); col(T.gris);
-    doc.splitTextToSize(mention, W - 2*M).forEach(l2 => { doc.text(l2, M, y); y += 4.3; });
-    y += 1;
+    doc.setFont('helvetica','italic'); doc.setFontSize(8.5); doc.setTextColor(...GRIS);
+    doc.splitTextToSize(mention, W - 2*M).forEach(l => { doc.text(l, M, y); y += 4.6; });
+    y += 2;
   }
 
-  /* ===== Échéances / validité ===== */
-  fX(); doc.setFontSize(8.3); col(T.encre);
+  // ---- Échéances / validité ----
+  doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(40,30,55);
   if (kind === 'devis'){
     doc.text("Devis valable " + FACT.delaiValidite + " jours, jusqu'au "
-      + dateFR(addDays(new Date(), Number(FACT.delaiValidite||30))) + '.', M, y); y += 5.2;
+      + dateFR(addDays(new Date(), Number(FACT.delaiValidite||30))) + '.', M, y); y += 6;
   } else {
     doc.text('Règlement sous ' + FACT.delaiPaiement + ' jours, au plus tard le '
-      + dateFR(addDays(new Date(), Number(FACT.delaiPaiement||30))) + '.', M, y); y += 5.2;
+      + dateFR(addDays(new Date(), Number(FACT.delaiPaiement||30))) + '.', M, y); y += 6;
   }
 
-  /* ===== Texte d'accompagnement ===== */
+  // ---- Texte d'accompagnement ----
   const intro = kind === 'devis' ? FACT.textes.devis : FACT.textes.facture;
-  if (intro && y < 252){
-    col(T.gris); doc.setFontSize(8.3);
-    doc.splitTextToSize(intro, W - 2*M).forEach(l2 => { doc.text(l2, M, y); y += 4.3; });
-    y += 1.5;
+  if (intro){
+    doc.setTextColor(...GRIS);
+    doc.splitTextToSize(intro, W - 2*M).forEach(l => { doc.text(l, M, y); y += 4.6; });
+    y += 3;
   }
 
-  /* ===== Conditions + mentions légales ===== */
+  // ---- Coordonnées bancaires ----
+  if (B.iban || B.bic){
+    doc.setDrawColor(226,216,240); doc.setFillColor(250,247,254);
+    doc.roundedRect(M, y, W - 2*M, 17, 2.5, 2.5, 'FD');
+    doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(...GRIS);
+    doc.text('COORDONNÉES BANCAIRES', M + 5, y + 5.5);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(40,30,55);
+    doc.text([B.titulaire && ('Titulaire : ' + B.titulaire), B.iban && ('IBAN : ' + B.iban), B.bic && ('BIC : ' + B.bic)]
+      .filter(Boolean).join('    ·    '), M + 5, y + 12);
+    y += 22;
+  }
+
+  // ---- Conditions + mentions (pied de page) ----
   const bas = 272;
   if (y < bas - 26) y = bas - 26;
-  fX(); doc.setFontSize(6.6); col(T.gris);
-  const cgv = cgvPourPdf();
-  if (cgv && y < 266)
-    doc.splitTextToSize(cgv, W - 2*M).slice(0, 5).forEach(l2 => { doc.text(l2, M, y); y += 3.1; });
-  if (FACT.textes.mentions && y < 279){ y += 1.5; fX('bold'); doc.text(FACT.textes.mentions, M, y); }
+  doc.setFont('helvetica','normal'); doc.setFontSize(6.6); doc.setTextColor(...GRIS);
+  const cgv = kind === 'devis' ? FACT.textes.cgv : (FACT.textes.cgv || '');
+  if (cgv) doc.splitTextToSize(cgv, W - 2*M).slice(0, 5).forEach(l => { doc.text(l, M, y); y += 3.1; });
+  if (FACT.textes.mentions){ y += 1.5; doc.setFont('helvetica','bold'); doc.text(FACT.textes.mentions, M, y); }
 
-  /* ===== Pied de page ===== */
-  degradePdf(doc, M, 282.5, W - 2*M, 0.8, T.g1, T.g2, T.g3);
-  const contacts = [E.nom, E.siteWeb, E.telephone, E.email].filter(Boolean).join('  ·  ');
-  const pied = String(D.piedDePage || '').trim();
-  fX(); doc.setFontSize(7); col(T.gris);
-  if (pied){
-    doc.text(pied, W/2, 287.3, { align:'center' });
-    doc.setFontSize(6.3);
-    doc.text(contacts, W/2, 291.3, { align:'center' });
-  } else {
-    doc.text(contacts, W/2, 288, { align:'center' });
-  }
+  doc.setDrawColor(...VIOLET); doc.setLineWidth(0.8); doc.line(M, 283, W - M, 283);
+  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...GRIS);
+  doc.text([E.nom, E.siteWeb, E.telephone, E.email].filter(Boolean).join('  ·  '), W/2, 288, { align:'center' });
 
   return doc;
 }
@@ -2183,53 +1991,6 @@ function renderFacturation(){
       </div>
     </div>
 
-    ${(() => {
-      const Dz = FACT.design || {};
-      const TH = pdfTheme();
-      const perso = !!Dz.perso;
-      const logoData = (Dz.logo && Dz.logo.data) ? Dz.logo.data : '';
-      const fc = (id, lab, val) =>
-        `<div class="field"><label>${lab}</label>
-          <input type="color" id="${id}" value="${rgb2hex(val)}" ${perso ? '' : 'disabled'}
-            style="height:40px;padding:4px;cursor:pointer;width:100%"></div>`;
-      return `<div class="card" style="padding:24px;margin-bottom:16px">
-      <div class="sec-title">Personnalisation des documents</div>
-      <p style="color:var(--muted);font-size:12.5px;line-height:1.6;margin:0 0 14px">
-        Apparence des devis et factures PDF. Par défaut, ils reprennent automatiquement les couleurs,
-        dégradés et typographies du site : si la charte du site évolue, les documents suivront tout seuls.
-        Activez « Couleurs personnalisées » uniquement pour vous en écarter.
-        Les coordonnées bancaires et les mentions légales des sections ci-dessus sont, elles aussi,
-        reprises automatiquement sur chaque document.
-      </p>
-      <div class="form-grid">
-        <div class="field"><label>Logo affiché sur les PDF</label>
-          <input type="file" id="fx-d-logo" accept="image/*" onchange="App.chargerLogoDoc(this)">
-          <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
-            <img id="fx-d-logo-apercu" alt="" ${logoData ? `src="${logoData}"` : ''}
-              style="height:34px;border-radius:6px;background:#fff;padding:3px;${logoData ? '' : 'display:none'}">
-            <button class="btn ghost sm" type="button" onclick="App.retirerLogoDoc()">Retirer le logo</button>
-          </div>
-        </div>
-        ${f('fx-d-slogan',"Slogan (sous le nom de l'entreprise)", Dz.slogan || 'Entrez dans une autre dimension')}
-        ${f('fx-d-pied','Texte du pied de page', Dz.piedDePage, 'Vide = vos coordonnées')}
-        <div class="field"><label>Couleurs</label>
-          <label style="display:flex;align-items:center;gap:9px;color:var(--muted);font-size:13px;padding-top:8px">
-            <input type="checkbox" id="fx-d-perso" ${perso ? 'checked' : ''}
-              onchange="App.factPersoToggle(this.checked)"> Couleurs personnalisées
-          </label></div>
-      </div>
-      <div class="form-grid" id="fx-d-couleurs" style="margin-top:12px">
-        ${fc('fx-d-principale','Couleur principale (accents, titres de cartes)', TH.principale)}
-        ${fc('fx-d-secondaire','Couleur secondaire (remises)', TH.secondaire)}
-        ${fc('fx-d-grad1','Dégradé — début', TH.g1)}
-        ${fc('fx-d-grad2','Dégradé — milieu', TH.g2)}
-        ${fc('fx-d-grad3','Dégradé — fin', TH.g3)}
-        ${fc('fx-d-titres','Couleur des bandeaux (en-tête, montant)', TH.sombre)}
-        ${fc('fx-d-cartes','Fond des cartes', TH.carte)}
-      </div>
-    </div>`;
-    })()}
-
     <div class="card" style="padding:24px;margin-bottom:16px">
       <div class="sec-title">Paiement en ligne (Stripe)</div>
       <p style="color:var(--muted);font-size:12.5px;line-height:1.6;margin:0 0 14px">
@@ -2251,39 +2012,6 @@ function renderFacturation(){
   </div>`;
 }
 
-
-/* ---------- Personnalisation des documents (administration) ---------- */
-function factPersoToggle(actif){
-  document.querySelectorAll('#fx-d-couleurs input').forEach(i => { i.disabled = !actif; });
-}
-function chargerLogoDoc(input){
-  const fichier = input.files && input.files[0];
-  if (!fichier) return;
-  const img = new Image();
-  const url = URL.createObjectURL(fichier);
-  img.onload = () => {
-    const max = 420, r = Math.min(1, max / Math.max(img.width, img.height));
-    const cv = document.createElement('canvas');
-    cv.width = Math.max(1, Math.round(img.width * r));
-    cv.height = Math.max(1, Math.round(img.height * r));
-    cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
-    FACT.design = FACT.design || {};
-    FACT.design.logo = { data: cv.toDataURL('image/png'), w: cv.width, h: cv.height };
-    URL.revokeObjectURL(url);
-    const ap = $('#fx-d-logo-apercu');
-    if (ap){ ap.src = FACT.design.logo.data; ap.style.display = ''; }
-    toast('Logo chargé — pensez à enregistrer les paramètres');
-  };
-  img.onerror = () => { URL.revokeObjectURL(url); toast('Image illisible'); };
-  img.src = url;
-}
-function retirerLogoDoc(){
-  if (FACT.design) FACT.design.logo = '';
-  const ap = $('#fx-d-logo-apercu');
-  if (ap){ ap.removeAttribute('src'); ap.style.display = 'none'; }
-  const inp = $('#fx-d-logo'); if (inp) inp.value = '';
-  toast('Logo retiré — pensez à enregistrer les paramètres');
-}
 
 /* ---------- Paiement depuis l'espace client ---------- */
 function paiementsClientBlock(c){
@@ -2369,44 +2097,10 @@ async function payerClient(type){
     });
     const data = await r.json().catch(() => ({}));
     if (!r.ok || !data.url) throw new Error(data.error || "Le paiement n'a pas pu être ouvert.");
-    // On réactive les boutons juste avant de partir vers Stripe : ainsi, si
-    // le client revient avec « précédent », la page restaurée est utilisable.
-    remettre();
-    if (err) err.textContent = '';
     window.location.href = data.url;
   } catch (e) {
     remettre();
     if (err) err.textContent = e.message || "Le paiement est momentanément indisponible. Réessayez ou contactez-nous.";
-  }
-}
-
-/* ---------- Retour de Stripe : confirmation + rafraîchissement ----------
-   L'adresse de retour contient l'identifiant de la session Stripe.
-   On demande au serveur (/api/stripe-verify) de relire cette session chez
-   Stripe et d'enregistrer le paiement en base — c'est idempotent, donc
-   sans conflit avec le webhook. Puis on relit la fiche jusqu'à ce que le
-   paiement apparaisse : statuts, montants et boutons se mettent à jour. */
-async function confirmerRetourStripe(token){
-  const q = (location.hash.split('?')[1] || '');
-  const session = (q.match(/session=([^&]+)/) || [])[1] || null;
-  if (session){
-    try {
-      await fetch('/api/stripe-verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session: decodeURIComponent(session), token })
-      });
-    } catch (_){ /* pas grave : le webhook prendra le relais */ }
-  }
-  // Plusieurs relectures : l'enregistrement peut mettre quelques secondes.
-  for (const delai of [300, 2500, 6000, 12000]){
-    await new Promise(r => setTimeout(r, delai));
-    const f = await fetchClientPublic(token);
-    if (f){
-      showPublic(renderClientPublic(f));
-      const fx = f.factu || {};
-      if (fx.paiementStatut && fx.paiementStatut !== 'aucun') break;
-    }
   }
 }
 
@@ -2424,6 +2118,7 @@ function documentsClientBlock(c){
         <div style="min-width:0"><div class="dn">${esc(def.titre)} <span class="dnum">${esc(d.numero||'')}</span></div>
           <div class="ds">${esc(d.name||'')}</div></div>
         <div class="da">
+          <button class="btn ghost sm" onclick="App.pubOpen('${c.token}','${k}')">Aperçu</button>
           <button class="btn neon sm" onclick="App.pubDownload('${c.token}','${k}')">Télécharger</button>
         </div></div>`;
     }).join('')}
@@ -2544,10 +2239,9 @@ async function route(){
       const c=await fetchClientPublic(m[2]);
       if(!c) return invalidLink();
       showPublic(renderClientPublic(c));
-      // Retour de Stripe : on vérifie la session côté serveur puis on
-      // relit la fiche jusqu'à ce que le paiement soit enregistré.
+      // Retour de Stripe : le webhook met un instant à confirmer, on relit la fiche.
       if(/paiement=ok/.test(location.hash)){
-        confirmerRetourStripe(m[2]);
+        setTimeout(async()=>{ const f=await fetchClientPublic(m[2]); if(f) showPublic(renderClientPublic(f)); }, 4000);
       }
       return;
     }
@@ -2570,20 +2264,7 @@ async function route(){
       document.body.appendChild(cc);
     }
     cc.style.display='flex';
-    // Intégré dans l'administration (iframe) : on ne montre JAMAIS l'écran de
-    // connexion — on redemande la session à l'administration jusqu'à l'obtenir.
-    // Ouvert seul (onglet direct) : comportement inchangé, connexion au bout de 2,5 s.
-    let embarque=false; try{ embarque = window.parent && window.parent !== window; }catch(_){ embarque=true; }
-    if(embarque){
-      let essais=0;
-      const relance=setInterval(()=>{
-        if(state.user || ++essais>40){ clearInterval(relance); return; }
-        try{ window.parent.postMessage({ type:'lpb-crm-ready' }, location.origin); }catch(_){}
-      }, 700);
-      setTimeout(()=>{ if(!state.user){ cc.style.display='none'; $('#login').style.display='flex'; refreshDbBadge(); } }, 30000);
-    } else {
-      setTimeout(()=>{ if(!state.user){ cc.style.display='none'; $('#login').style.display='flex'; refreshDbBadge(); } }, 2500);
-    }
+    setTimeout(()=>{ if(!state.user){ cc.style.display='none'; $('#login').style.display='flex'; refreshDbBadge(); } }, 2500);
   }
 }
 
@@ -2628,15 +2309,6 @@ async function init(){
 }
 window.addEventListener('hashchange', route);
 
-/* Retour depuis Stripe avec le bouton « précédent » du navigateur : la page
-   est restaurée telle quelle depuis le cache, avec les boutons de paiement
-   encore désactivés (ils avaient été grisés au moment de la redirection).
-   On relit alors la fiche et on réaffiche : les boutons redeviennent actifs,
-   sauf si le paiement a réellement été effectué. */
-window.addEventListener('pageshow', (e) => {
-  if (e.persisted && /^#\/(client|prestataire)\//.test(location.hash || '')) route();
-});
-
 /* Réception de la session admin (transmise par la page d'administration
    qui contient le CRM). Aucune supposition sur le stockage : l'admin nous
    envoie directement les jetons, on ouvre la session, on entre. */
@@ -2659,7 +2331,6 @@ init();
 return {doAdminLogin,logout,go,toggleNav,tmplEdit,
   openClient,closeModal,saveClient,deleteClient,onFormule,uploadDoc,downloadDoc,removeDoc,
   genererDocuments,regenererDocument,ouvrirDocument,setDocStatut,factSave,pubOpen,
-  factPersoToggle,chargerLogoDoc,retirerLogoDoc,
   enregistrerReglement,payerClient,marquerPaiementsVus,
   optAdd,optRemove,optName,optPrice,recalcTotal,
   setPrestMode,asgAdd,asgRemove,asgName,asgHd,asgHf,asgMontant,

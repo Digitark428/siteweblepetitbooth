@@ -18,7 +18,11 @@
 
 const Stripe = require('stripe');
 
-async function handler(req, res) {
+// On désactive l'analyse automatique du corps : la vérification de
+// signature Stripe exige le contenu brut, octet pour octet.
+module.exports.config = { api: { bodyParser: false } };
+
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
   const secret = process.env.STRIPE_SECRET_KEY;
@@ -90,14 +94,7 @@ async function handler(req, res) {
     // On renvoie 500 pour que Stripe réessaie automatiquement.
     return res.status(500).send('Erreur de traitement');
   }
-}
-
-// On désactive l'analyse automatique du corps : la vérification de
-// signature Stripe exige le contenu brut, octet pour octet.
-// (L'export du handler doit venir AVANT celui de la config, sinon la
-// config serait écrasée — c'était le cas auparavant.)
-module.exports = handler;
-module.exports.config = { api: { bodyParser: false } };
+};
 
 /* ---------- Corps brut de la requête ---------- */
 async function lireCorpsBrut(req) {
